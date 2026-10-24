@@ -196,6 +196,17 @@ export interface LetterInput {
   letterDay: number | null;
   hasLetter: boolean;
   depositAmount: number | null;
+  /** matches the renter confirmed against their move-in scan */
+  evidence?: Evidence[];
+}
+
+export interface Evidence {
+  chargeId: string;
+  photoId: number;
+  /** e.g. "Aug 1, 2025" */
+  photoDate: string;
+  /** e.g. "bedroom carpet" */
+  thing: string;
 }
 
 const short = (c: Charge, withAmount: boolean): string => {
@@ -215,10 +226,18 @@ export function buildLetter(i: LetterInput): string {
   } else {
     const late = isLate(i.letterDay, i.clock) ? ` It is dated after the ${fmtLong(i.clock.deadline)} deadline.` : "";
     L.push(`I moved out on ${fmtLong(i.moveOut)} and received your list of deductions.${late} Under Va. Code § 55.1-1226, please send:`);
-    const proof = i.charges.filter((c) => c.chip === "proof");
-    const wear = i.charges.filter((c) => c.chip === "wear");
-    const fee = i.charges.filter((c) => c.chip === "fee");
+    const ev = new Map((i.evidence ?? []).map((e) => [e.chargeId, e]));
+    // A confirmed photo is stronger than any flag, except a fee that is barred outright.
+    const proven = i.charges.filter((c) => ev.has(c.id) && c.chip !== "fee");
+    const rest = i.charges.filter((c) => !proven.includes(c));
+    const proof = rest.filter((c) => c.chip === "proof");
+    const wear = rest.filter((c) => c.chip === "wear");
+    const fee = rest.filter((c) => c.chip === "fee");
     let n = 0;
+    for (const c of proven) {
+      const e = ev.get(c.id) as Evidence;
+      L.push(`${++n}. Removal of: ${short(c, true)}. This ${e.thing} damage was present at move-in (photo #${e.photoId}, dated ${e.photoDate}, attached).`);
+    }
     if (proof.length) L.push(`${++n}. Receipts or records for: ${proof.map((c) => short(c, true)).join(", ")}.`);
     if (wear.length) L.push(`${++n}. How normal wear and tear was subtracted for: ${wear.map((c) => short(c, false)).join(", ")}.`);
     if (fee.length) L.push(`${++n}. Removal of: ${fee.map((c) => short(c, true)).join(", ")} (Va. Code § 55.1-1208(C) bars maintenance and repair fees).`);
