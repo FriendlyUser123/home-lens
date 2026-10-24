@@ -89,10 +89,10 @@ test("confirmed evidence moves a charge into a removal request with the photo", 
     moveOut: d("2026-10-20"), clock, today: d("2026-11-24"), letterDay: d("2026-11-22"), hasLetter: true, depositAmount: 1200,
     charges: [mk("a", "Carpet stain removal, bedroom", 210, "wear"), mk("b", "Wall scuff repaint", 85, "wear"), mk("c", "Cleaning", 150, "proof")],
     evidence: [{ chargeId: "a", photoId: 12, photoDate: "Aug 1, 2025", thing: "bedroom carpet" }, { chargeId: "b", photoId: 7, photoDate: "Aug 1, 2025", thing: "living room wall" }] });
-  assert.match(t, /Removal of: Carpet stain removal \$210\. This bedroom carpet damage was present at move-in \(photo #12, dated Aug 1, 2025, attached\)/);
-  assert.match(t, /Receipts or records for: Cleaning \$150/);
+  assert.match(t, /1\. Carpet stain removal \$210: present at move-in, photo #12, Aug 1, 2025 \(attached\)/);
+  assert.match(t, /3\. Cleaning \$150: receipts or records/);
   assert.doesNotMatch(t, /normal wear/);
-  assert.ok(t.split(/\s+/).length <= 170, String(t.split(/\s+/).length));
+  assert.ok(t.split(/\s+/).length <= 140, String(t.split(/\s+/).length));
 });
 
 test("a barred fee stays a fee request even with a photo", () => {
@@ -100,5 +100,5 @@ test("a barred fee stays a fee request even with a photo", () => {
   const clock = computeClock(d("2026-10-20"), null, d("2026-11-24"));
   const t = buildLetter({ tenantName: "", forwardingAddress: "", landlordName: "", moveOut: d("2026-10-20"), clock, today: d("2026-11-24"),
     letterDay: null, hasLetter: true, depositAmount: null, charges: [c], evidence: [{ chargeId: "f", photoId: 1, photoDate: "Aug 1", thing: "x" }] });
-  assert.match(t, /1\. Removal of: Maintenance fee \$75 \(Va\. Code/);
+  assert.match(t, /1\. Maintenance fee \$75: please remove/);
 });

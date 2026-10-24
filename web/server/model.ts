@@ -120,14 +120,18 @@ async function viaGemini(imageB64: string, mime: string): Promise<ReadResult> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY is not set");
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-goog-api-key": key },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: PROMPT }, { inline_data: { mime_type: mime, data: imageB64 } }] }],
-      generationConfig: { temperature: 0, responseMimeType: "application/json" },
-    }),
-  });
+  const call = (thinking: boolean) =>
+    fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": key },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: PROMPT }, { inline_data: { mime_type: mime, data: imageB64 } }] }],
+        // Reading printed text needs no long reasoning: "minimal" cuts about 8 s to about 1.5 s per page.
+        generationConfig: { temperature: 0, responseMimeType: "application/json", ...(thinking ? {} : { thinkingConfig: { thinkingLevel: "minimal" } }) },
+      }),
+    });
+  let res = await call(false);
+  if (res.status === 400) res = await call(true); // a model that rejects thinkingConfig still works without it
   if (!res.ok) throw new Error(`gemini ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
   const text = (data.candidates?.[0]?.content?.parts ?? []).filter((p) => !p.thought).map((p) => p.text ?? "").join("");

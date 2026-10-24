@@ -21,7 +21,7 @@ import { Start } from "./screens/Start.tsx";
 import type { Job, Sample, Step } from "./types.ts";
 
 const TODAY_OVERRIDE = new URLSearchParams(window.location.search).get("today");
-const EMPTY_JOB: Job = { phase: "flatten", rawUrl: "", rawW: 1, rawH: 1, quad: null, pageUrl: "", pageW: 1, pageH: 1, fields: [], ocrOk: true };
+const EMPTY_JOB: Job = { phase: "flatten", rawUrl: "", rawW: 1, rawH: 1, quad: null, pageUrl: "", pageW: 1, pageH: 1, fields: [], words: [], ocrOk: true };
 
 export function App() {
   const [step, setStep] = useState<Step>("start");
@@ -82,6 +82,8 @@ export function App() {
       setJob({ ...EMPTY_JOB, phase: "flatten", rawUrl: s.raw.toDataURL("image/jpeg", 0.7), rawW: s.raw.width, rawH: s.raw.height, quad: s.quad, pageUrl: jpeg, pageW: s.page.width, pageH: s.page.height });
       const apiP = readLetter(jpeg, "image/jpeg");
       const ocrP = recognizeWords(s.page);
+      // Show word boxes as soon as OCR is done, while the model is still reading.
+      void ocrP.then((words) => setJob((j) => ({ ...j, words }))).catch(() => undefined);
       await sleep(s.quad && !reduced ? 1300 : 250);
       setJob((j) => ({ ...j, phase: "read" }));
       const [api, ocr] = await Promise.allSettled([apiP, ocrP]);

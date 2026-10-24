@@ -225,24 +225,20 @@ export function buildLetter(i: LetterInput): string {
     );
   } else {
     const late = isLate(i.letterDay, i.clock) ? ` It is dated after the ${fmtLong(i.clock.deadline)} deadline.` : "";
-    L.push(`I moved out on ${fmtLong(i.moveOut)} and received your list of deductions.${late} Under Va. Code § 55.1-1226, please send:`);
+    L.push(`I moved out on ${fmtLong(i.moveOut)} and received your list of deductions.${late} Under Va. Code § 55.1-1226, please send the following within 10 days:`);
     const ev = new Map((i.evidence ?? []).map((e) => [e.chargeId, e]));
-    // A confirmed photo is stronger than any flag, except a fee that is barred outright.
-    const proven = i.charges.filter((c) => ev.has(c.id) && c.chip !== "fee");
-    const rest = i.charges.filter((c) => !proven.includes(c));
-    const proof = rest.filter((c) => c.chip === "proof");
-    const wear = rest.filter((c) => c.chip === "wear");
-    const fee = rest.filter((c) => c.chip === "fee");
-    let n = 0;
-    for (const c of proven) {
-      const e = ev.get(c.id) as Evidence;
-      L.push(`${++n}. Removal of: ${short(c, true)}. This ${e.thing} damage was present at move-in (photo #${e.photoId}, dated ${e.photoDate}, attached).`);
-    }
-    if (proof.length) L.push(`${++n}. Receipts or records for: ${proof.map((c) => short(c, true)).join(", ")}.`);
-    if (wear.length) L.push(`${++n}. How normal wear and tear was subtracted for: ${wear.map((c) => short(c, false)).join(", ")}.`);
-    if (fee.length) L.push(`${++n}. Removal of: ${fee.map((c) => short(c, true)).join(", ")} (Va. Code § 55.1-1208(C) bars maintenance and repair fees).`);
-    if (n === 0) L.push("1. A copy of your records of these deductions.");
+    // One line per charge. A confirmed photo beats any flag, except a fee that is barred outright.
+    i.charges.forEach((c, n) => {
+      const e = ev.get(c.id);
+      let ask: string;
+      if (e && c.chip !== "fee") ask = `present at move-in, photo #${e.photoId}, ${e.photoDate} (attached). Please remove it.`;
+      else if (c.chip === "fee") ask = "please remove. Maintenance and repair fees are not allowed (Va. Code § 55.1-1208(C)).";
+      else if (c.chip === "wear") ask = "how normal wear and tear was subtracted.";
+      else ask = "receipts or records.";
+      L.push(`${n + 1}. ${short(c, true)}: ${ask}`);
+    });
+    if (i.charges.length === 0) L.push("1. A copy of your records of these deductions.");
   }
-  L.push("", "I also ask to inspect your deduction records. Please reply within 10 days. Thank you.", "", "Sincerely,", name, addr);
+  L.push("", "I also ask to inspect your deduction records. Thank you.", "", "Sincerely,", name, addr);
   return L.join("\n");
 }

@@ -1,4 +1,5 @@
 import type { Field } from "./lib/fields.ts";
+import type { OcrWord } from "./lib/locate.ts";
 import type { Quad } from "./lib/quad.ts";
 
 export type Step = "start" | "camera" | "reading" | "confirm" | "result" | "photos" | "letter" | "evidence";
@@ -24,6 +25,8 @@ export interface Job {
   pageW: number;
   pageH: number;
   fields: Field[];
+  /** OCR word boxes, shown faintly while the model reads */
+  words: OcrWord[];
   /** false when OCR failed, so nothing could be placed on the page */
   ocrOk: boolean;
 }

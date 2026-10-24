@@ -72,8 +72,8 @@ export function Camera(p: {
       if (!ctx) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, cw, ch);
-      // video pixels -> overlay pixels (object-fit: cover)
-      const s = Math.max(cw / v.videoWidth, ch / v.videoHeight);
+      // video pixels -> overlay pixels (object-fit: contain)
+      const s = Math.min(cw / v.videoWidth, ch / v.videoHeight);
       const ox = (cw - v.videoWidth * s) / 2, oy = (ch - v.videoHeight * s) / 2;
       const guide: Quad = [{ x: cw * 0.14, y: ch * 0.12 }, { x: cw * 0.86, y: ch * 0.12 }, { x: cw * 0.86, y: ch * 0.88 }, { x: cw * 0.14, y: ch * 0.88 }];
       const want: Quad = target ? (target.map((pt) => ({ x: pt.x * s + ox, y: pt.y * s + oy })) as Quad) : guide;
