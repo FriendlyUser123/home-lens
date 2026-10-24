@@ -69,8 +69,21 @@ Teammates own the flows above. Ownership of the VSLAM extension is below. **Do n
 
 **Constraints before using it at all:**
 1. **Disclose and ask.** Publish the VSLAM project as its own public repo with a licence, state in the README that it pre-dates the hackathon, and ask an organizer. The deck does not say how prior personal work is treated. Do **not** copy the old scripts (`vslam_mesh.py`, `vslam_viz.py`, `vslam_video.py`, 2026-10-07) into this repo.
-2. **Licences.** Spectacular AI's SDK is proprietary; its README says only the OAK PyPI wrapper is free for non-commercial use, commercial terms by contact, open-source redistribution not addressed. The prototype's depth model, Depth Anything V2 Large, is CC-BY-NC-4.0 per the official repo (the Metric-Indoor-Large card was not checked); Small is Apache 2.0. A non-commercial dependency conflicts with calling it an open-source dependency. Audit first; list every non-commercial dependency in the README or drop the extension.
+2. **Licences: audited 2026-10-24 evening, results below.** List every non-commercial dependency in the README or drop the extension.
 3. Agree the asset format with the app teammate and record it here.
+
+**Code built so far:** `scan/` holds a fresh pipeline written this weekend: `pipeline.py` with stages poses → depth → TSDF → planes → rules → report, plus `test_measure.py` (synthetic room, passes). It uses a Python 3.12 venv at `.venv/` (spectacularAI has no 3.14 wheels). A separate `src/` pipeline from another writer overlaps it on measurements, rules and the report. Pick one.
+
+**Licence audit (2026-10-24):**
+| Dependency | Licence | Effect on the public MIT repo |
+|---|---|---|
+| Spectacular AI SDK `spectacularAI` 1.54.0 (provides `sai-cli`, the poses stage) | **Proprietary.** The wheel's `LICENSE.txt` reads "Spectacular AI SDK for OAK (Depth AI) … All rights reserved", followed only by third-party notices. The only usage grant is PyPI's licence field: "Free for non-commercial use" (no definition given). The sdk-examples README narrows it: "free for non-commercial use on x86_64 Windows and Linux." Neither text says outright that processing iPhone Spectacular Rec recordings is covered; nerfstudio's docs do present `pip install spectacularAI[full]` + `sai-cli process` as the iPhone path. | It is fine to call as a separately installed tool for a non-commercial hackathon. **Never vendor or commit it.** It is **not open source**, so the scan pipeline is not a fully open-source stack and does not fit the brief's "open-source dependency" wording. Say so in the README. To be fully open, `poses` needs a replacement that writes a metric nerfstudio `transforms.json` (none chosen yet). |
+| Depth model `depth-anything/Depth-Anything-V2-Metric-Indoor-Small-hf` (used in code) | **No licence declared** on the HF card. The original checkpoint `Depth-Anything-V2-Metric-Hypersim-Small` declares **Apache-2.0**, and the official repo says the Small model is Apache-2.0. The `-hf` repo appears to be the transformers conversion of that checkpoint (same org and size), but this is not confirmed. Training data: Hypersim, **CC BY-SA 3.0**. Whether ShareAlike reaches trained weights is unsettled; the authors released the weights as Apache-2.0. | Usable. In the README, cite the Apache-2.0 original checkpoint and credit Hypersim (CC BY-SA 3.0). **Do not switch to Base/Large/Giant**: those are CC-BY-NC-4.0 per the official repo, and their metric `-hf` cards declare no licence either. |
+| Open3D 0.20.0 | MIT | Fine |
+| torch 2.14.1+cu130 (Apache-2.0, BSD-2/3, MIT, BSL-1.0 per its metadata), opencv-python (Apache-2.0), numpy (BSD-3 and others), Pillow (MIT-CMU), transformers (Apache-2.0) | Permissive | Fine |
+| Other packages in the venv (Open3D's dash/flask/plotly stack, etc.) | MIT / BSD / Apache-2.0. certifi is MPL-2.0, which applies per file and only when its own files are modified. | Fine |
+
+Not audited: the Spectacular Rec iOS app's own terms (we only use it to record; nothing from it is redistributed), and Gemma 4's terms (the README already links them).
 
 ## Rules for agents
 - **Claims:** a number shown in the UI, README or video must be sourced or measured. **Re-verify before recording:** the 399 vs 20 court figure (Montgomery County GDC, OCIS), the 99% pre-leased figure (one RE/MAX broker via WSLS), and the "<1% of eviction cases had a tenant lawyer" figure. None were checked by the planning session.
@@ -89,7 +102,7 @@ Tonight → Sunday 11 AM: vision (Gemma room damage-tag prompt + box overlay; Op
 ## Open questions
 - Is the VSLAM extension in or out, and the time at which it is cut? (team decision)
 - Organizer answer on prior personal prototypes and "disclosed pre-existing open-source dependency."
-- Licence audit result for the VSLAM dependencies.
+- Licence audit: done (see the VSLAM section). Still open: whether a proprietary, non-commercial pose tool is acceptable to the team and organizers, or whether `poses` needs an open replacement.
 - Asset format between the SLAM pipeline and the app.
 - Team size (not stated in the deck).
 - Whether Gemma reliably gives usable boxes on room photos (a spike for the damage-tag teammate).

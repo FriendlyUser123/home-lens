@@ -4,5 +4,5 @@ opencv-python
 open3d
 pillow
 transformers
-torch  # GPU build: pip install torch --index-url https://download.pytorch.org/whl/cu128
-# sai-cli for the poses stage: pip install spectacularAI[full]  (proprietary, licence audit pending; not needed for measure/report/test)
+torch  # GPU build: pip install torch --index-url https://download.pytorch.org/whl/cu130
+# sai-cli for the poses stage: pip install spectacularAI[full]  (proprietary, free for non-commercial use only; see CLAUDE.md licence audit)

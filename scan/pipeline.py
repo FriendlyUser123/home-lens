@@ -36,7 +36,8 @@ UNIT_LABEL = {"ft2": "sq ft", "ft": "ft", "in": "in"}
 def poses(scan):
     # ponytail: sai-cli is proprietary (licence audit pending); any tool that writes a metric
     # nerfstudio transforms.json into sai/ can replace this one call.
-    subprocess.run(["sai-cli", "process", str(scan / "rec"), "--key_frame_distance=0.15", str(scan / "sai")], check=True)
+    subprocess.run(["sai-cli", "process", "--format", "nerfstudio", "--key_frame_distance=0.15",
+                    str(scan / "rec"), str(scan / "sai")], check=True)
 
 
 def load_frames(scan):
