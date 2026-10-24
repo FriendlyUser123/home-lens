@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "home-lens/room-tags",
+  "title": "Home Lens room tags (hand-off from the room scan to the document matcher)",
+  "type": "object",
+  "required": ["scanId", "address", "capturedAt", "tags"],
+  "properties": {
+    "scanId": { "type": "string" },
+    "address": { "type": "string", "description": "Free text, e.g. 'Laurel Bend Apts #204'" },
+    "capturedAt": { "type": "string", "format": "date-time", "description": "When the move-in scan was done" },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "room", "object", "note", "photo", "takenAt", "confirmed"],
+        "properties": {
+          "id": { "type": "integer" },
+          "room": { "type": "string", "enum": ["bedroom", "bathroom", "kitchen", "living room", "hallway", "closet", "other"] },
+          "object": { "type": "string", "description": "What is damaged, lowercase noun: carpet, wall, door, window, blinds, counter, floor, ceiling, appliance, fixture, other" },
+          "note": { "type": "string", "description": "Short visible description, e.g. 'dark stain near closet, ~8 in'" },
+          "photo": { "type": "string", "description": "Relative path or data URL of the photo the tag is on" },
+          "box": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4, "description": "Optional [x, y, w, h] in 0-1 photo coordinates" },
+          "takenAt": { "type": "string", "format": "date-time" },
+          "pose": { "type": "array", "items": { "type": "number" }, "description": "Optional VSLAM camera position/orientation for 3D placement" },
+          "confirmed": { "type": "boolean", "description": "true once the renter has confirmed the tag" }
+        }
+      }
+    }
+  }
+}
