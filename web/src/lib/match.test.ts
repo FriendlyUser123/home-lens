@@ -85,3 +85,17 @@ test("parseRoomScan accepts the schema and rejects junk", () => {
   assert.throws(() => parseRoomScan({ tags: [{ id: 1 }] }));
   assert.equal(parseRoomScan({ tags: [{ id: 1, room: "attic", object: "wall", photo: "p", takenAt: "t" }] }).tags[0]?.room, "other");
 });
+
+test("only confirmed proposals reach the letter, one photo per charge", async () => {
+  const { confirmedMatches, toEvidence, decisionKey } = await import("./match.ts");
+  const cands = matchCharges([ch("a", "Carpet stain, bedroom")], [tag(1, "bedroom", "carpet", "stain"), tag(2, "bedroom", "carpet", "old mark")]);
+  assert.equal(confirmedMatches(cands, {}).length, 0);
+  const first = cands[0], second = cands[1];
+  assert.ok(first && second);
+  const yes = confirmedMatches(cands, { [decisionKey(first)]: "yes", [decisionKey(second)]: "yes" });
+  assert.equal(yes.length, 2);
+  const ev = toEvidence(yes, [tag(1, "bedroom", "carpet", "stain"), tag(2, "bedroom", "carpet", "old mark")]);
+  assert.equal(ev.length, 1);
+  assert.deepEqual([ev[0]?.photoId, ev[0]?.photoDate, ev[0]?.thing], [1, "Aug 1, 2025", "bedroom carpet"]);
+  assert.equal(confirmedMatches(cands, { [decisionKey(first)]: "no" }).length, 0);
+});

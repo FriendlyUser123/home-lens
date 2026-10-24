@@ -1,4 +1,5 @@
 // Matches a landlord's move-out charges to the renter's move-in damage tags (room-tags.schema.json).
+import type { Evidence } from "./rules.ts";
 // Pure and deterministic: room + object + wording. The user always confirms; this only proposes.
 
 export interface RoomTag {
@@ -213,4 +214,33 @@ export function photoDate(iso: string, withYear = false): string {
   if (!m) return iso;
   const day = `${MONTHS[Number(m[2]) - 1] ?? ""} ${Number(m[3])}`;
   return withYear ? `${day}, ${m[1]}` : day;
+}
+
+// ---- the user's yes / no on each proposal ----
+
+export type Decisions = Record<string, "yes" | "no">;
+
+export const decisionKey = (c: { chargeId: string; tagId: number }): string => `${c.chargeId}:${c.tagId}`;
+
+/** Only proposals the user said yes to, best first. A proposal is never confirmed on its own. */
+export function confirmedMatches(cands: Candidate[], decisions: Decisions): Candidate[] {
+  return cands.filter((c) => decisions[decisionKey(c)] === "yes");
+}
+
+/** One line of evidence per charge for the letter: the best confirmed photo. */
+export function toEvidence(confirmed: Candidate[], tags: RoomTag[]): Evidence[] {
+  const seen = new Set<string>();
+  const out: Evidence[] = [];
+  for (const c of confirmed) {
+    const tag = tags.find((t) => t.id === c.tagId);
+    if (!tag || seen.has(c.chargeId)) continue;
+    seen.add(c.chargeId);
+    out.push({
+      chargeId: c.chargeId,
+      photoId: tag.id,
+      photoDate: photoDate(tag.takenAt, true),
+      thing: tag.room === "other" ? tag.object : `${tag.room} ${tag.object}`,
+    });
+  }
+  return out;
 }
