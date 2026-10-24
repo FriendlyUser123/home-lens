@@ -1,0 +1,15 @@
+{
+  "scanId": "sample-scan-204",
+  "address": "Laurel Bend Apts #204 (sample)",
+  "capturedAt": "2025-08-01T15:20:00-04:00",
+  "tags": [
+    { "id": 12, "room": "bedroom", "object": "carpet", "note": "dark stain near closet, ~8 in",
+      "photo": "/samples/room-bedroom-carpet.png", "box": [0.52, 0.7, 0.24, 0.14], "takenAt": "2025-08-01T15:31:00-04:00", "confirmed": true },
+    { "id": 7, "room": "living room", "object": "wall", "note": "grey scuff by the door, ~10 in",
+      "photo": "/samples/room-livingroom-wall.png", "box": [0.33, 0.4, 0.16, 0.06], "takenAt": "2025-08-01T15:44:00-04:00", "confirmed": true },
+    { "id": 21, "room": "kitchen", "object": "counter", "note": "small burn mark near the stove",
+      "photo": "/samples/room-kitchen-counter.png", "box": [0.38, 0.46, 0.12, 0.06], "takenAt": "2025-08-01T15:52:00-04:00", "confirmed": true },
+    { "id": 3, "room": "bedroom", "object": "blinds", "note": "two bent slats",
+      "photo": "/samples/room-bedroom-blinds.png", "box": [0.38, 0.28, 0.24, 0.12], "takenAt": "2025-08-01T15:36:00-04:00", "confirmed": true }
+  ]
+}
