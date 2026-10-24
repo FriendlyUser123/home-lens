@@ -1,0 +1,48 @@
+[
+ {
+  "id": "bedroom-area",
+  "label": "Bedroom floor area",
+  "measure": "floor_area_m2",
+  "unit": "ft2",
+  "min": 70,
+  "min_per_occupant_if_shared": 50,
+  "source": "International Property Maintenance Code 404.4.1, applied in Virginia through its maintenance code (edition not confirmed)",
+  "last_verified": null
+ },
+ {
+  "id": "min-dimension",
+  "label": "Smallest room dimension",
+  "measure": "min_dimension_m",
+  "unit": "ft",
+  "min": 7,
+  "source": "One county's reading of the maintenance code, not confirmed for Blacksburg",
+  "last_verified": null
+ },
+ {
+  "id": "ceiling-height",
+  "label": "Ceiling height",
+  "measure": "ceiling_height_m",
+  "unit": "ft",
+  "min": 7,
+  "source": "One county's reading of the maintenance code, not confirmed for Blacksburg",
+  "last_verified": null
+ },
+ {
+  "id": "door-clear-width",
+  "label": "Door clear width",
+  "measure": "door",
+  "unit": "in",
+  "min": 32,
+  "source": "2010 ADA Standards, screening reference only; a rental is not necessarily covered by the ADA",
+  "last_verified": null
+ },
+ {
+  "id": "accessible-route-width",
+  "label": "Hallway clear width",
+  "measure": "hallway",
+  "unit": "in",
+  "min": 36,
+  "source": "2010 ADA Standards accessible route, screening reference only; a rental is not necessarily covered by the ADA",
+  "last_verified": null
+ }
+]

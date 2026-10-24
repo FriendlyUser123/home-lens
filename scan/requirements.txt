@@ -1,0 +1,8 @@
+# Python 3.12 (spectacularAI has no newer wheels)
+numpy
+opencv-python
+open3d
+pillow
+transformers
+torch  # GPU build: pip install torch --index-url https://download.pytorch.org/whl/cu128
+# sai-cli for the poses stage: pip install spectacularAI[full]  (proprietary, licence audit pending; not needed for measure/report/test)
