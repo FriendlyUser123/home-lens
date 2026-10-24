@@ -7,3 +7,4 @@ dist/
 shots/
 .cache/
 !.env.example
+public/vendor/
