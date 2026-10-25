@@ -8,19 +8,21 @@ function fromBlob(name: string, path: string, blob: Blob): PickedFile {
   return { name, path, type: blob.type, arrayBuffer: () => blob.arrayBuffer(), text: () => blob.text(), url: () => URL.createObjectURL(blob) };
 }
 
-async function get(path: string): Promise<Blob> {
-  const res = await fetch(BASE + path);
+async function get(path: string, base = BASE): Promise<Blob> {
+  const res = await fetch(base + path);
   if (!res.ok) throw new Error(`Could not load the demo file ${path}.`);
   return res.blob();
 }
 
-export async function loadDemoScan(opts: { bundle?: boolean } = {}): Promise<LoadedScan> {
+// house: the real scan of a team member's living room (public/samples/house/)
+export async function loadDemoScan(opts: { bundle?: boolean; house?: boolean } = {}): Promise<LoadedScan> {
+  const base = opts.house ? "/samples/house/" : BASE;
   if (opts.bundle) return readScanFiles([fromBlob("scan-bundle.json", "scan-bundle.json", await get("scan-bundle.json"))]);
-  const tagsBlob = await get("room-tags.json");
+  const tagsBlob = await get("room-tags.json", base);
   const tags = JSON.parse(await tagsBlob.text()) as { tags: { photo: string }[] };
-  const photos = await Promise.all(tags.tags.map(async (t) => fromBlob(t.photo.split("/").pop() ?? t.photo, t.photo, await get(t.photo))));
+  const photos = await Promise.all(tags.tags.map(async (t) => fromBlob(t.photo.split("/").pop() ?? t.photo, t.photo, await get(t.photo, base))));
   return readScanFiles([
-    fromBlob("cloud.ply", "cloud.ply", await get("cloud.ply")),
+    fromBlob("cloud.ply", "cloud.ply", await get("cloud.ply", base)),
     fromBlob("room-tags.json", "room-tags.json", tagsBlob),
     ...photos,
   ]);

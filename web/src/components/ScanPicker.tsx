@@ -3,7 +3,7 @@ import { loadDemoScan } from "../lib/demo.ts";
 import { fromFile, readScanFiles, type LoadedScan } from "../lib/scan3d.ts";
 
 /** Demo button plus a multi-file picker and a folder picker. Real scan output loads with no changes. */
-export function ScanPicker(p: { onLoaded: (l: LoadedScan) => void; demoLabel?: string }) {
+export function ScanPicker(p: { onLoaded: (l: LoadedScan) => void; demoLabel?: string; house?: boolean }) {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -25,7 +25,7 @@ export function ScanPicker(p: { onLoaded: (l: LoadedScan) => void; demoLabel?: s
 
   return (
     <div className="paper loader">
-      <button type="button" className="btn big" disabled={busy} onClick={() => void run(() => loadDemoScan())}>{p.demoLabel ?? "Use demo scan"}</button>
+      <button type="button" className="btn big" disabled={busy} onClick={() => void run(() => loadDemoScan({ house: p.house }))}>{p.demoLabel ?? "Use demo scan"}</button>
       <label className="btn ghost big filebtn">
         Choose scan files
         <input type="file" multiple accept=".json,.ply,image/*" onChange={(e) => { void pick(e.target.files); e.target.value = ""; }} />
