@@ -143,7 +143,7 @@ def compare(scan, photo_path, boxes, radius=RADIUS_M):
                 cv2.imwrite(str(out / spot["crop"]), crop_pair(photo, warped, box))
             spots.append(spot)
         r = dict(photo=str(photo_path), status="placed", pose_inliers=loc["inliers"], keyframe=loc["frame"],
-                 radius_m=radius, spots=spots)
+                 radius_m=radius, camera=loc["c2w"].tolist(), spots=spots)  # camera = photo's pose, 4x4 camera-to-world
     (out / "compare.json").write_text(json.dumps(r, indent=1))
     return r
 

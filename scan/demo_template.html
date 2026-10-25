@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Home Lens: the same spot, before and after</title>
+<style>
+:root{--bg:#fff;--fg:#14181f;--mut:#4a5565;--card:#f2f4f7;--line:#c5cdd8;--acc:#0b4fd6;--ok:#0a6b34;--none:#6b4a00;--tag:#e8a500}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1218;--fg:#eef1f5;--mut:#aeb8c6;--card:#18202a;--line:#304050;--acc:#7aa7ff;--ok:#56c987;--none:#e6b85a;--tag:#ffc83d}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:18px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:66rem;margin:0 auto;padding:1.25rem 1rem 4rem}
+h1{font-size:1.9rem;line-height:1.2;margin:.2rem 0 .4rem}
+h2{font-size:1.25rem;margin:2.2rem 0 .3rem}
+h3{font-size:1.05rem;margin:.2rem 0 .5rem}
+p{margin:.35rem 0 .8rem}
+.mut{color:var(--mut)}
+.lede{font-size:1.1rem;max-width:46rem}
+.banner{background:var(--card);border-left:5px solid var(--acc);padding:.7rem 1rem;margin:1rem 0;border-radius:4px}
+.steps{display:flex;flex-wrap:wrap;gap:.5rem;list-style:none;padding:0;margin:1rem 0}
+.steps li{flex:1 1 11rem;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:.6rem .8rem}
+.steps b{display:block;color:var(--acc)}
+.shot{margin:0;max-width:34rem}
+.frame{position:relative;line-height:0}
+.frame img{width:100%;height:auto;border-radius:6px;border:1px solid var(--line)}
+.box{position:absolute;border:3px solid var(--tag);box-shadow:0 0 0 2px #000a;border-radius:3px}
+figcaption{margin-top:.5rem}
+#map{width:100%;height:26rem;display:block;background:#0b0f14;border-radius:8px;border:1px solid var(--line);touch-action:none;cursor:grab}
+#map:focus-visible{outline:3px solid var(--acc)}
+.legend{display:flex;flex-wrap:wrap;gap:1rem;margin:.5rem 0;font-size:.95rem}
+.dot{display:inline-block;width:.85rem;height:.85rem;border-radius:50%;vertical-align:-.1rem;margin-right:.35rem}
+.spots{display:grid;grid-template-columns:repeat(auto-fit,minmax(20rem,1fr));gap:1rem;margin-top:.8rem}
+.spot{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:.8rem}
+.spot img{width:100%;height:auto;border-radius:6px;border:1px solid var(--line);display:block}
+.colhead{display:flex;justify-content:space-between;font-size:.9rem;color:var(--mut);margin:.3rem .1rem}
+.verdict{font-weight:700;margin:.6rem 0 .5rem}
+.match .verdict{color:var(--ok)}
+.none .verdict{color:var(--none)}
+.row{display:flex;flex-wrap:wrap;gap:.5rem}
+button{font:inherit;padding:.55rem .9rem;border-radius:8px;border:2px solid var(--acc);background:transparent;color:var(--acc);cursor:pointer;min-height:2.75rem}
+button:hover{background:var(--acc);color:var(--bg)}
+button:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
+button[aria-pressed=true]{background:var(--acc);color:var(--bg)}
+ul.limits{padding-left:1.2rem}
+footer{margin-top:2.5rem;font-size:.95rem}
+</style>
+</head>
+<body>
+<main>
+<h1>The same spot, before and after</h1>
+<p class="lede">Walk your home once at move-in. At move-out, point your phone at a charge and Home Lens shows the move-in view of that exact spot. You decide whether it is the same.</p>
+<div class="banner"><strong>Preview built from one real scan of one room.</strong> {{NOTE}} Information, not legal advice. The AI never decides what is damage or what is normal wear and tear.</div>
+
+<ol class="steps" aria-label="How it works">
+<li><b>1 · Walk</b>One slow video of the room ({{N_KEYFRAMES}} keyframes).</li>
+<li><b>2 · Find</b>{{MODEL}} reads photos and proposes damage with a box. You confirm.</li>
+<li><b>3 · Map</b>Code places every tag in a 3D map of the room.</li>
+<li><b>4 · Compare</b>A move-out photo is placed in the same map and shown beside the move-in view.</li>
+</ol>
+
+<h2>Move-in: damage you confirmed</h2>
+<p>The model proposed it, you looked at the photo and said yes. Only confirmed tags are used below.</p>
+{{TAGS}}
+
+<h2>The map: where each tag sits</h2>
+<p class="mut">Drag to turn, scroll or pinch to zoom, arrow keys when focused. The tag's position is in the table below the map as well.</p>
+<canvas id="map" tabindex="0" role="img" aria-label="Interactive 3D map of the scanned room with the damage tag and the move-out camera marked"></canvas>
+<div class="legend">
+<span><span class="dot" style="background:#ffc83d"></span>Move-in tag</span>
+<span><span class="dot" style="background:#35d0ff"></span>Move-out photo's camera</span>
+<span><span class="dot" style="background:#9aa5b4"></span>Where you walked at move-in</span>
+<button type="button" id="reset">Reset view</button>
+</div>
+<table id="pos" class="mut"><caption class="mut" style="text-align:left">Text equivalent: positions in the map, in metres</caption><tbody></tbody></table>
+
+<h2>Move-out: the same spot, side by side</h2>
+<p>{{PLACED}}</p>
+<div class="spots">
+{{SPOTS}}
+</div>
+
+<h2>What this does and does not do</h2>
+<ul class="limits">
+<li>It shows you the move-in view of a spot. It does not say whether something is damage, who caused it, or what it costs.</li>
+<li>A photo is placed only when the walkthrough saw about the same view. In our tests roughly half of held-out photos were placed; the rest say "compare by eye" rather than guess.</li>
+<li>The model may miss small damage. A short list is not a complete list.</li>
+<li>The "same spot" check is the 3D position of the boxed spot; a spot more than the limit away from every tag is reported as having no tag.</li>
+</ul>
+<footer class="mut">Home Lens · GDG Build with AI × Hacktoberfest 2026 · Virginia Tech</footer>
+</main>
+
+<script>
+const D = {{DATA}};
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const xyz = new Int16Array(b64(D.cloud.xyz).buffer), rgb = b64(D.cloud.rgb), N = D.cloud.n, C0 = D.cloud.centre;
+const pt = i => [xyz[i*3]/100, xyz[i*3+1]/100, xyz[i*3+2]/100];            // relative to the path centre
+const rel = p => [p[0]-C0[0], p[1]-C0[1], p[2]-C0[2]];
+const path = D.path.map(rel), tags = D.tags.map(t => ({...t, p: rel(t.pos)}));
+const cam = D.camera && {p: rel([D.camera[0][3], D.camera[1][3], D.camera[2][3]]),
+  f: [D.camera[0][2], D.camera[1][2], D.camera[2][2]], r: [D.camera[0][0], D.camera[1][0], D.camera[2][0]], u: [-D.camera[0][1], -D.camera[1][1], -D.camera[2][1]]};
+const cv = document.getElementById('map'), g = cv.getContext('2d');
+// open on the first tag, seen from behind the move-out camera when there is one; otherwise an overview
+const home = {az: 0.9, el: 0.75, dist: 9, t: [0, 0, 0]};
+if (tags.length) { home.t = tags[0].p; home.dist = 5; home.el = 0.5; if (cam) home.az = Math.atan2(cam.p[0]-home.t[0], cam.p[1]-home.t[1]); }
+let v = {...home};
+const dot = (a,b) => a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const sub = (a,b) => [a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const norm = a => { const l = Math.hypot(...a) || 1; return a.map(x => x/l); };
+const cross = (a,b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+let W, H, F;
+function basis() {
+  const eye = [v.t[0] + v.dist*Math.cos(v.el)*Math.sin(v.az), v.t[1] + v.dist*Math.cos(v.el)*Math.cos(v.az), v.t[2] + v.dist*Math.sin(v.el)];
+  const f = norm(sub(v.t, eye)), r = norm(cross(f, [0,0,1])), u = cross(r, f);
+  return {eye, f, r, u};
+}
+function proj(p, B) { const d = sub(p, B.eye), z = dot(d, B.f); return z > 0.1 ? [W/2 + F*dot(d, B.r)/z, H/2 - F*dot(d, B.u)/z, z] : null; }
+function resize() {
+  const k = window.devicePixelRatio || 1;
+  W = cv.clientWidth; H = cv.clientHeight; cv.width = W*k; cv.height = H*k; g.setTransform(k,0,0,k,0,0); F = Math.min(W, H*1.3)*0.95; draw();
+}
+function draw() {
+  const B = basis(); g.clearRect(0,0,W,H);
+  const zs = new Float32Array(N), sx = new Float32Array(N), sy = new Float32Array(N), idx = [];
+  for (let i = 0; i < N; i++) { const q = proj(pt(i), B); if (q) { sx[i]=q[0]; sy[i]=q[1]; zs[i]=q[2]; idx.push(i); } }
+  idx.sort((a,b) => zs[b]-zs[a]);
+  const s = Math.min(6, Math.max(2, 11 / v.dist));
+  for (const i of idx) { g.fillStyle = `rgb(${rgb[i*3]},${rgb[i*3+1]},${rgb[i*3+2]})`; g.fillRect(sx[i], sy[i], s, s); }
+  g.strokeStyle = 'rgba(154,165,180,.45)'; g.lineWidth = 1.5; g.beginPath();
+  path.forEach((p,i) => { const q = proj(p, B); if (q) i ? g.lineTo(q[0],q[1]) : g.moveTo(q[0],q[1]); }); g.stroke();
+  if (cam) {
+    const c = proj(cam.p, B), corners = [[1,1],[-1,1],[-1,-1],[1,-1]].map(([a,b]) => proj(cam.p.map((x,k) => x + 0.35*cam.f[k] + 0.22*a*cam.r[k] + 0.16*b*cam.u[k]), B));
+    g.strokeStyle = '#35d0ff'; g.lineWidth = 2.5;
+    if (c && corners.every(Boolean)) { g.beginPath(); corners.forEach(q => { g.moveTo(c[0],c[1]); g.lineTo(q[0],q[1]); }); g.moveTo(...corners[3].slice(0,2)); corners.forEach(q => g.lineTo(q[0],q[1])); g.stroke(); }
+    tags.forEach(t => { const q = proj(t.p, B); if (c && q) { g.setLineDash([6,5]); g.beginPath(); g.moveTo(c[0],c[1]); g.lineTo(q[0],q[1]); g.stroke(); g.setLineDash([]); } });
+  }
+  tags.forEach(t => { const q = proj(t.p, B); if (!q) return;
+    g.fillStyle = '#ffc83d'; g.strokeStyle = '#000'; g.lineWidth = 3; g.beginPath(); g.arc(q[0], q[1], 9, 0, 7); g.stroke(); g.fill();
+    g.font = '600 15px system-ui'; g.lineWidth = 4; g.strokeStyle = '#000'; g.strokeText('Tag ' + t.id, q[0]+14, q[1]+5); g.fillStyle = '#fff'; g.fillText('Tag ' + t.id, q[0]+14, q[1]+5); });
+}
+let drag = null;
+cv.addEventListener('pointerdown', e => { drag = [e.clientX, e.clientY]; cv.setPointerCapture(e.pointerId); cv.style.cursor = 'grabbing'; });
+cv.addEventListener('pointerup', () => { drag = null; cv.style.cursor = 'grab'; });
+cv.addEventListener('pointermove', e => { if (!drag) return; v.az -= (e.clientX-drag[0])*0.008; v.el = Math.max(0.05, Math.min(1.5, v.el + (e.clientY-drag[1])*0.006)); drag = [e.clientX, e.clientY]; draw(); });
+cv.addEventListener('wheel', e => { e.preventDefault(); v.dist = Math.max(1.5, Math.min(20, v.dist*Math.exp(e.deltaY*0.001))); draw(); }, {passive: false});
+cv.addEventListener('keydown', e => { const k = {ArrowLeft:[.1,0,0],ArrowRight:[-.1,0,0],ArrowUp:[0,-.08,0],ArrowDown:[0,.08,0],'+':[0,0,-.8],'-':[0,0,.8]}[e.key]; if (!k) return; e.preventDefault(); v.az += k[0]; v.el = Math.max(0.05, Math.min(1.5, v.el + k[1])); v.dist = Math.max(1.5, Math.min(20, v.dist + k[2])); draw(); });
+document.getElementById('reset').onclick = () => { v = {...home}; draw(); };
+addEventListener('resize', resize);
+const tb = document.querySelector('#pos tbody');
+const m = p => p.map(x => x.toFixed(2)).join(', ');
+tags.forEach(t => tb.insertAdjacentHTML('beforeend', `<tr><th scope="row" style="text-align:left;padding-right:1rem">Tag ${t.id} (${t.label.replace(/</g,'&lt;')})</th><td>${m(t.pos)}</td></tr>`));
+if (D.camera) tb.insertAdjacentHTML('beforeend', `<tr><th scope="row" style="text-align:left;padding-right:1rem">Move-out photo's camera</th><td>${m([D.camera[0][3], D.camera[1][3], D.camera[2][3]])}</td></tr>`);
+resize();
+
+document.querySelectorAll('.spot').forEach(sp => {
+  const out = sp.querySelector('.answer'), btns = sp.querySelectorAll('button');
+  btns.forEach(b => b.addEventListener('click', () => {
+    btns.forEach(x => x.setAttribute('aria-pressed', x === b));
+    out.textContent = b.dataset.act === 'yes' ? 'Confirmed by you. In the full app the move-in photo goes on your letter.' : 'Marked as not the same. In the full app it stays off your letter.';
+  }));
+});
+</script>
+</body>
+</html>
