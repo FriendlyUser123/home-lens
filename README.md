@@ -12,7 +12,7 @@ Three moments in a renter's year, one app:
 
 **Information, not legal advice.**
 
-**Demo video (2 min):** VIDEO_LINK
+**Demo video (2 min):** https://www.youtube.com/watch?v=--MqkFOXGTU
 
 ## Model
 
