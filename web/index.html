@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home Lens</title>
+<link rel="stylesheet" href="style.css">
+<!-- ponytail: three.js from a pinned CDN. Vendor build/three.module.js and examples/jsm/ into web/vendor/ for an offline demo. -->
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+</head>
+<body>
+<a class="skip" href="#view">Skip to content</a>
+<header class="top">
+  <a class="brand" href="#/">Home Lens</a>
+  <nav aria-label="Main">
+    <a href="#/move-in" data-nav="move-in">Move in</a>
+    <a href="#/problem" data-nav="problem">Report a problem</a>
+    <a href="#/move-out" data-nav="move-out">Move out</a>
+  </nav>
+</header>
+<main id="view" tabindex="-1"></main>
+<footer class="foot">Information, not legal advice. Photos stay in this browser. Demo mode: Gemma 4 is not connected, so photo and letter reading shows sample results.</footer>
+<div id="live" class="sr" aria-live="polite"></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
