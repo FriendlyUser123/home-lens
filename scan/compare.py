@@ -1,19 +1,14 @@
 """Home Lens damage compare: where in the move-in scan is this move-out photo, and was a tag already there?
 
-Needs a finished scan folder (pipeline.py: poses, depth, fuse). Everything here is geometry, no AI:
-  place    tags.json + cloud.ply -> tags3d.json     (3D spot of every move-in damage tag)
-  compare  photo + boxes -> compare/<photo>/*.json,jpg   (localize the photo in the map, list nearby tags,
-                                                          save move-in vs move-out crops side by side)
-
-tags.json (written by whoever runs Gemma on the move-in keyframes), pixel boxes on the keyframe image:
-  [{"id": "t1", "frame": "<keyframe file stem>", "box": [x0, y0, x1, y1], "label": "scuff on wall"}]
-Boxes passed to `compare` are pixels on the move-out photo. Gemma never produces coordinates; code does.
+Needs a finished scan folder (pipeline.py: poses, depth, fuse) and its room-tags.json (room_tags.py; each tag
+carries a 3D `position`). Everything here is geometry, no AI: localize the photo in the map, cast a ray through
+each box, list the move-in tags nearby, save move-in vs move-out crops side by side
+(compare/<photo>/compare.json, spot<N>.jpg). Boxes are pixels [x0, y0, x1, y1] on the move-out photo.
 
 The result is only ever "possible match, confirm": it shows the renter the same spot before and after.
 It does not decide whether anything is damage or normal wear and tear.
 
-Usage: python scan/compare.py place data/<scan>
-       python scan/compare.py compare data/<scan> --photo out.jpg --box x0 y0 x1 y1 [--box ...]
+Usage: python scan/compare.py data/<scan> --photo out.jpg --box x0 y0 x1 y1 [--box ...]
 """
 import argparse
 import json
@@ -111,18 +106,6 @@ def load_cloud(scan):
     return np.asarray(o3d.io.read_point_cloud(str(scan / "cloud.ply")).points)
 
 
-def place(scan):
-    frames, _ = load_frames(scan)
-    by_stem = {f["image"].stem: f for f in frames}
-    cloud = load_cloud(scan)
-    tags = json.loads((scan / "tags.json").read_text())
-    for t in tags:
-        f = by_stem[t["frame"]]
-        p = cast(f["c2w"], f["K"], t["box"], cloud)
-        t["position"] = None if p is None else p.tolist()
-    (scan / "tags3d.json").write_text(json.dumps(tags, indent=1))
-
-
 def crop_pair(photo, warped, box, pad=0.5):
     """Move-out photo | move-in keyframe warped into the same view, around the box with some context."""
     x0, y0, x1, y1 = box
@@ -142,7 +125,7 @@ def compare(scan, photo_path, boxes, radius=RADIUS_M):
         r = dict(photo=str(photo_path), status="cannot place this photo in the move-in scan; compare by eye", spots=[])
     else:
         cloud = load_cloud(scan)
-        tags = [t for t in json.loads((scan / "tags3d.json").read_text()) if t["position"]]
+        tags = [t for t in json.loads((scan / "room-tags.json").read_text())["tags"] if t.get("position")]
         # ponytail: homography assumes the spot is on a flat wall or floor; curved or cluttered spots warp wrong
         warped = cv2.warpPerspective(loc["keyframe"], loc["H"], photo.shape[1::-1]) if loc["H"] is not None else None
         spots = []
@@ -150,7 +133,7 @@ def compare(scan, photo_path, boxes, radius=RADIUS_M):
             p = cast(loc["c2w"], loc["K"], box, cloud)
             near = [] if p is None else sorted(
                 ((float(np.linalg.norm(p - t["position"])), t) for t in tags), key=lambda x: x[0])
-            near = [dict(id=t["id"], label=t["label"], frame=t["frame"], distance_m=round(d, 2))
+            near = [dict(id=t["id"], label=f"{t['object']}: {t['note']}", frame=t["frame"], distance_m=round(d, 2))
                     for d, t in near if d <= radius]
             spot = dict(box=box, position=None if p is None else p.tolist(), nearby_tags=near,
                         status="not found in the scan" if p is None else
@@ -167,15 +150,9 @@ def compare(scan, photo_path, boxes, radius=RADIUS_M):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("stage", choices=["place", "compare"])
     ap.add_argument("scan", type=Path)
-    ap.add_argument("--photo", type=Path)
-    ap.add_argument("--box", nargs=4, type=float, action="append", metavar=("X0", "Y0", "X1", "Y1"))
+    ap.add_argument("--photo", type=Path, required=True)
+    ap.add_argument("--box", nargs=4, type=float, action="append", required=True, metavar=("X0", "Y0", "X1", "Y1"))
     ap.add_argument("--radius", type=float, default=RADIUS_M)
     a = ap.parse_args()
-    if a.stage == "place":
-        place(a.scan)
-    else:
-        if not (a.photo and a.box):
-            ap.error("compare needs --photo and at least one --box")
-        print(json.dumps(compare(a.scan, a.photo, a.box, a.radius), indent=1))
+    print(json.dumps(compare(a.scan, a.photo, a.box, a.radius), indent=1))

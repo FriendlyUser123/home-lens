@@ -12,7 +12,7 @@ import cv2
 import numpy as np
 import open3d as o3d
 
-from compare import compare, place
+from compare import cast, compare
 from pipeline import GL_TO_CV
 
 rng = np.random.default_rng(0)
@@ -88,13 +88,12 @@ with tempfile.TemporaryDirectory() as tmp:
     (scan / "depth" / "scale.json").write_text(json.dumps({f"kf{i}": 1.0 for i in range(3)}))
     grid = np.array([(x, y, WALL_Z) for x in np.arange(-3, 3, 0.02) for y in np.arange(-2, 2, 0.02)])
     o3d.io.write_point_cloud(str(scan / "cloud.ply"), o3d.geometry.PointCloud(o3d.utility.Vector3dVector(grid)))
-    (scan / "tags.json").write_text(json.dumps([
-        dict(id="t1", frame="kf0", box=box_at(W1, poses[0], K), label="scuff on wall"),
-        dict(id="t3", frame="kf1", box=box_at(W3, poses[1], K), label="mark by window")]))
-    place(scan)
-    tags = json.loads((scan / "tags3d.json").read_text())
-    for t, w in zip(tags, (W1, W3)):
-        assert np.linalg.norm(np.array(t["position"]) - [*w, WALL_Z]) < 0.05, t
+    tags = []
+    for i, (kf, w, note) in enumerate([(0, W1, "scuff on wall"), (1, W3, "mark by window")], 1):
+        p = cast(poses[kf], K, box_at(w, poses[kf], K), grid)  # what room_tags.py stores as `position`
+        assert np.linalg.norm(p - [*w, WALL_Z]) < 0.05, (w, p)
+        tags.append(dict(id=i, object="wall", note=note, frame=f"kf{kf}", position=p.tolist()))
+    (scan / "room-tags.json").write_text(json.dumps(dict(tags=tags)))
 
     # move-out photo: new spot, 0.75x resolution (so the intrinsics rescale), darker
     Kp = K.copy()
@@ -107,7 +106,7 @@ with tempfile.TemporaryDirectory() as tmp:
     assert r["status"] == "placed", r
     old, new = r["spots"]
     assert np.linalg.norm(np.array(old["position"]) - [*W1, WALL_Z]) < 0.1, old
-    assert [t["id"] for t in old["nearby_tags"]] == ["t1"] and old["status"] == "possible match, confirm", old
+    assert [t["id"] for t in old["nearby_tags"]] == [1] and old["status"] == "possible match, confirm", old
     assert np.linalg.norm(np.array(new["position"]) - [*W2, WALL_Z]) < 0.1, new
     assert not new["nearby_tags"] and new["status"] == "no move-in tag near this spot", new
     assert (scan / "compare" / "out" / "spot0.jpg").exists()

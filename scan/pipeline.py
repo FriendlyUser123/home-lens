@@ -234,10 +234,23 @@ def parse_gemma(text, names):
     return dict(model=GEMMA_MODEL, checks=rows, summary=str(r.get("summary", ""))[:1500])
 
 
+def gemma_call(parts):
+    """One Gemma 4 request (text and inline images in `parts`) -> the reply text."""
+    import urllib.request
+
+    req = urllib.request.Request(
+        f"https://generativelanguage.googleapis.com/v1beta/models/{GEMMA_MODEL}:generateContent",
+        data=json.dumps({"contents": [{"role": "user", "parts": parts}],
+                         "generationConfig": {"temperature": 0}}).encode(),
+        headers={"Content-Type": "application/json", "x-goog-api-key": api_key()})
+    with urllib.request.urlopen(req, timeout=180) as resp:
+        body = json.load(resp)
+    return "".join(p.get("text", "") for p in body["candidates"][0]["content"]["parts"])
+
+
 def gemma(scan, n_frames=6):
     import base64
     import io
-    import urllib.request
 
     from PIL import Image
 
@@ -253,14 +266,7 @@ def gemma(scan, n_frames=6):
         img.save(buf, "JPEG", quality=85)
         parts += [{"text": f"frame: {name}"},
                   {"inline_data": {"mime_type": "image/jpeg", "data": base64.b64encode(buf.getvalue()).decode()}}]
-    req = urllib.request.Request(
-        f"https://generativelanguage.googleapis.com/v1beta/models/{GEMMA_MODEL}:generateContent",
-        data=json.dumps({"contents": [{"role": "user", "parts": parts}],
-                         "generationConfig": {"temperature": 0}}).encode(),
-        headers={"Content-Type": "application/json", "x-goog-api-key": api_key()})
-    with urllib.request.urlopen(req, timeout=180) as resp:
-        body = json.load(resp)
-    text = "".join(p.get("text", "") for p in body["candidates"][0]["content"]["parts"])
+    text = gemma_call(parts)
     (scan / "gemma_raw.txt").write_text(text, encoding="utf-8")  # kept so every row can be traced to the reply
     (scan / "gemma.json").write_text(json.dumps(parse_gemma(text, names), indent=1))
 
