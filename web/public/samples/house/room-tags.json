@@ -1,0 +1,37 @@
+{
+ "scanId": "dhruv-house",
+ "address": "Team member's home (scanned with their permission)",
+ "capturedAt": "2026-10-25T14:55:05+00:00",
+ "tags": [
+  {
+   "id": 1,
+   "room": "living room",
+   "object": "other",
+   "note": "There is a hole in the seat of the sofa.",
+   "photo": "photos/frame_00028.jpg",
+   "box": [
+    0.425,
+    0.215,
+    0.055,
+    0.04
+   ],
+   "takenAt": "2026-10-25T14:55:05+00:00",
+   "pose": [
+    1.6908064921594381,
+    -0.9368348148751187,
+    -0.13400199242298208,
+    -0.19846003085346225,
+    0.9011465054081205,
+    -0.3725601994931042,
+    0.09872937606423622
+   ],
+   "confirmed": false,
+   "frame": "frame_00028",
+   "position": [
+    2.487349092830273,
+    -2.304746231365714,
+    -1.0200199915501613
+   ]
+  }
+ ]
+}
