@@ -6,3 +6,10 @@ dist/
 .DS_Store
 shots/
 .cache/
+
+# scan pipeline: recordings, scans and footage never go in the public repo
+data/
+*.mp4
+*.mov
+.venv/
+__pycache__/
