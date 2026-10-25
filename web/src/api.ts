@@ -63,3 +63,17 @@ export async function readLetter(dataUrl: string, mime: string): Promise<Reading
     mocked: json.mocked,
   };
 }
+
+export interface IssueGuess { issue: string; room: string; description: string; model: string; mocked: boolean }
+
+/** Gemma names the problem in a photo. The renter edits it; code writes the notice. */
+export async function nameIssue(dataUrl: string): Promise<IssueGuess> {
+  const res = await fetch("/api/issue", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ image: dataUrl, mime: "image/jpeg" }),
+  });
+  const json = (await res.json()) as IssueGuess & { error?: string };
+  if (!res.ok) throw new Error(json.error ?? "Could not read the photo.");
+  return json;
+}

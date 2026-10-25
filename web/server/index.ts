@@ -1,6 +1,6 @@
 // Tiny API. No storage, no logging of request bodies. The photo is forwarded to the model and forgotten.
 import { createServer } from "node:http";
-import { readDocument, provider, OLLAMA_MODEL, GEMINI_MODEL } from "./model.ts";
+import { nameIssue, readDocument, provider, OLLAMA_MODEL, GEMINI_MODEL } from "./model.ts";
 
 const PORT = Number(process.env.PORT ?? 8710);
 const MAX_BYTES = 12 * 1024 * 1024;
@@ -31,6 +31,11 @@ const server = createServer(async (req, res) => {
       if (!image) return send(400, { error: "no image" });
       const b64 = image.replace(/^data:[^,]*,/, "");
       return send(200, await readDocument(b64, mime ?? "image/png"));
+    }
+    if (req.method === "POST" && req.url === "/api/issue") {
+      const { image, mime } = JSON.parse(await body(req)) as { image?: string; mime?: string };
+      if (!image) return send(400, { error: "no image" });
+      return send(200, await nameIssue(image.replace(/^data:[^,]*,/, ""), mime ?? "image/jpeg"));
     }
     send(404, { error: "not found" });
   } catch (e) {
