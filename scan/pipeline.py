@@ -1,7 +1,8 @@
 """Home Lens room scan: phone walkthrough -> metric measurements -> report.
 
 Capture (on the phone, no code): Spectacular Rec, slow closed-loop walk, good light, no spinning
-in place, texture in view, tilt up to the ceiling once, end where you started. Copy the recording
+in place, texture in view, slow tilts up to the ceiling 2-3 times and down at open floor, end where
+you started. Copy the recording
 to data/<scan>/rec/.
 
 Stages read and write files in one scan folder, so each can be rerun alone:
@@ -10,13 +11,16 @@ Stages read and write files in one scan folder, so each can be rerun alone:
   fuse     depth + poses -> mesh.ply, cloud.ply      (TSDF)
   measure  cloud.ply -> measurements.json            (RANSAC planes: floor, ceiling, walls)
   pick     cloud.ply -> picks.json                   (two human-picked points per door/hallway width)
-  report   measurements + picks + rules.json -> report.json, report.html
+  gemma    6 keyframes + measurements -> gemma.json   (Gemma 4 via Gemini API: qualitative checks + summary)
+  review   gemma.json -> gemma.json                  (renter confirms or rejects each check)
+  report   measurements + picks + gemma + rules.json -> report.json, report.html
 
 Usage: python scan/pipeline.py <stage|all> data/<scan> [--occupants N] [--rel-error 0.03]
 """
 import argparse
 import html
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -178,6 +182,93 @@ def pick(scan, name, kind):
     path.write_text(json.dumps(picks, indent=1))
 
 
+GEMMA_MODEL = os.environ.get("GEMMA_MODEL", "gemma-4-26b-a4b-it")  # id from the brief, not verified
+GEMMA_CHECKS = ["window visible", "smoke detector visible", "step or raised threshold at a doorway",
+                "visible water damage, mold or stains", "visible damage to walls, floor or doors"]
+ANSWERS = ("yes", "no", "cannot tell")
+
+
+def api_key():
+    if key := os.environ.get("GEMINI_API_KEY"):
+        return key
+    env = Path(__file__).parent.parent / ".env"  # gitignored
+    for line in env.read_text().splitlines() if env.exists() else []:
+        if line.startswith("GEMINI_API_KEY="):
+            return line.split("=", 1)[1].strip().strip('"')
+    sys.exit("set GEMINI_API_KEY or put it in .env")
+
+
+def gemma_prompt(names, measurements):
+    return (
+        "You are helping a renter document a room. You see keyframes from a phone walkthrough, each labelled with "
+        f"its name. Measurements, made by code, not by you: {json.dumps(measurements)}\n"
+        "For each check, answer yes, no or cannot tell, and name the ONE frame that shows it. Answer yes or no only "
+        "when a frame clearly shows it; otherwise cannot tell. Never estimate sizes or distances.\n"
+        f"Checks: {json.dumps(GEMMA_CHECKS)}\nFrames: {json.dumps(names)}\n"
+        'Reply with JSON only: {"checks": [{"check": "...", "answer": "yes|no|cannot tell", "frame": "<frame name>", '
+        '"note": "<what you see, one short sentence>"}], "summary": "<3 plain sentences for the renter; use only '
+        'numbers from the measurements above; say this is information, not legal advice>"}')
+
+
+def parse_gemma(text, names):
+    """Gemma's reply -> one row per check. A yes/no that cites no real frame is downgraded to cannot tell."""
+    try:
+        r = json.loads(text[text.index("{"):text.rindex("}") + 1])
+    except ValueError:
+        r = {}
+    got = {c.get("check"): c for c in r.get("checks", []) if isinstance(c, dict)}
+    rows = []
+    for check_name in GEMMA_CHECKS:
+        c = got.get(check_name, {})
+        answer, frame = c.get("answer"), c.get("frame")
+        if answer not in ANSWERS or (answer != "cannot tell" and frame not in names):
+            answer = "cannot tell"
+        rows.append(dict(check=check_name, answer=answer, frame=frame if frame in names else None,
+                         note=str(c.get("note", ""))[:300], confirmed=None))
+    return dict(model=GEMMA_MODEL, checks=rows, summary=str(r.get("summary", ""))[:1500])
+
+
+def gemma(scan, n_frames=6):
+    import base64
+    import io
+    import urllib.request
+
+    from PIL import Image
+
+    frames, _ = load_frames(scan)
+    picked = [frames[i]["image"] for i in np.linspace(0, len(frames) - 1, min(n_frames, len(frames))).astype(int)]
+    names = [p.relative_to(scan).as_posix() for p in picked]
+    mpath = scan / "measurements.json"
+    parts = [{"text": gemma_prompt(names, json.loads(mpath.read_text()) if mpath.exists() else {})}]
+    for name, p in zip(names, picked):
+        img = Image.open(p).convert("RGB")
+        img.thumbnail((1024, 1024))  # ponytail: fixed downscale to keep the request small; raise if small damage is missed
+        buf = io.BytesIO()
+        img.save(buf, "JPEG", quality=85)
+        parts += [{"text": f"frame: {name}"},
+                  {"inline_data": {"mime_type": "image/jpeg", "data": base64.b64encode(buf.getvalue()).decode()}}]
+    req = urllib.request.Request(
+        f"https://generativelanguage.googleapis.com/v1beta/models/{GEMMA_MODEL}:generateContent",
+        data=json.dumps({"contents": [{"role": "user", "parts": parts}],
+                         "generationConfig": {"temperature": 0}}).encode(),
+        headers={"Content-Type": "application/json", "x-goog-api-key": api_key()})
+    with urllib.request.urlopen(req, timeout=180) as resp:
+        body = json.load(resp)
+    text = "".join(p.get("text", "") for p in body["candidates"][0]["content"]["parts"])
+    (scan / "gemma_raw.txt").write_text(text, encoding="utf-8")  # kept so every row can be traced to the reply
+    (scan / "gemma.json").write_text(json.dumps(parse_gemma(text, names), indent=1))
+
+
+def review(scan):
+    """Renter confirms or rejects each Gemma check in the terminal; only confirmed rows count."""
+    path = scan / "gemma.json"
+    g = json.loads(path.read_text())
+    for c in g["checks"]:
+        a = input(f"{c['check']}: Gemma says {c['answer']} ({c['frame'] or 'no frame'}; {c['note']}). Correct? [y/n/skip] ")
+        c["confirmed"] = {"y": True, "n": False}.get(a.strip().lower(), c["confirmed"])
+    path.write_text(json.dumps(g, indent=1))
+
+
 def check(item, value_m, rule, rel_error, occupants):
     """pass / fail only when the whole error bar is on one side of the requirement."""
     unit = rule["unit"]
@@ -211,6 +302,8 @@ def report(scan, occupants=1, rel_error=None):
     r = dict(created=datetime.now(timezone.utc).isoformat(timespec="seconds"), occupants=occupants,
              rel_error=rel_error, frames_scaled_to_slam=f"{sum(s is not None for s in scales)}/{len(scales)}",
              measurements=m, items=items)
+    if (g := scan / "gemma.json").exists():
+        r["gemma"] = json.loads(g.read_text())
     (scan / "report.json").write_text(json.dumps(r, indent=1))
     (scan / "report.html").write_text(render_html(r), encoding="utf-8")
 
@@ -228,6 +321,22 @@ def render_html(r):
         f"<tr><th scope=row>{e(i['item'])}</th><td>{measured(i)}</td>"
         f"<td>at least {i['required']:g} {UNIT_LABEL[i['unit']]}</td><td>{e(i['status'])}</td>"
         f"<td>{e(i['source'])} (checked: {e(i['last_verified'] or 'not yet')})</td></tr>" for i in r["items"])
+    gemma_html = ""
+    if g := r.get("gemma"):
+        seen = {True: "confirmed by you", False: "rejected by you", None: "not reviewed"}
+        frame = lambda c: f'<a href="{e(c["frame"])}">{e(c["frame"])}</a>' if c["frame"] else "none"
+        grows = "\n".join(
+            f"<tr><th scope=row>{e(c['check'])}</th><td>{e(c['answer'])}</td><td>{frame(c)}</td>"
+            f"<td>{e(c['note'])}</td><td>{seen[c['confirmed']]}</td></tr>" for c in g["checks"])
+        gemma_html = f"""<table><caption>What {e(g['model'])} saw in the keyframes (it never measures)</caption>
+<thead><tr><th scope="col">Check</th><th scope="col">Answer</th><th scope="col">Frame</th>
+<th scope="col">Note</th><th scope="col">Review</th></tr></thead>
+<tbody>
+{grows}
+</tbody></table>
+<h2>Summary written by Gemma</h2>
+<p>{e(g['summary']) or 'No summary.'}</p>
+<p>Check it against the tables above; the tables are the record.</p>"""
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Home Lens room report</title>
@@ -245,6 +354,7 @@ caption{{text-align:left;font-weight:bold;padding:.4rem 0}}</style></head>
 <tbody>
 {rows}
 </tbody></table>
+{gemma_html}
 <p>Frames scaled to the SLAM map: {r['frames_scaled_to_slam']}. Generated {e(r['created'])}.</p>
 </main></body></html>
 """
@@ -252,7 +362,7 @@ caption{{text-align:left;font-weight:bold;padding:.4rem 0}}</style></head>
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("stage", choices=["poses", "depth", "fuse", "measure", "pick", "report", "all"])
+    ap.add_argument("stage", choices=["poses", "depth", "fuse", "measure", "pick", "gemma", "review", "report", "all"])
     ap.add_argument("scan", type=Path, help="scan folder, e.g. data/bedroom1")
     ap.add_argument("--occupants", type=int, default=1)
     ap.add_argument("--rel-error", type=float,
@@ -262,8 +372,10 @@ if __name__ == "__main__":
     a = ap.parse_args()
     if a.stage == "pick":
         pick(a.scan, a.name, a.kind)
-    for name, stage in [("poses", poses), ("depth", depth), ("fuse", fuse), ("measure", measure)]:
-        if a.stage in (name, "all"):  # pick is interactive, run it on its own before report
+    if a.stage == "review":
+        review(a.scan)
+    for name, stage in [("poses", poses), ("depth", depth), ("fuse", fuse), ("measure", measure), ("gemma", gemma)]:
+        if a.stage in (name, "all"):  # pick and review are interactive, run them on their own before report
             stage(a.scan)
     if a.stage in ("report", "all"):
         report(a.scan, a.occupants, a.rel_error)

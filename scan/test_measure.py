@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import open3d as o3d
 
-from pipeline import check, measure_points, report
+from pipeline import GEMMA_CHECKS, check, measure_points, parse_gemma, report
 
 rng = np.random.default_rng(0)
 o3d.utility.random.seed(0)
@@ -49,12 +49,26 @@ assert check("x", None, area, 0.03, 1)["status"] == "cannot tell"  # not measure
 assert check("x", 0.76, door, 0.02, 1)["status"] == "fail"         # 29.9 in
 assert check("x", 0.86, door, 0.02, 1)["status"] == "pass"         # 33.9 in
 
+# Gemma reply parsing: fenced JSON, a made-up frame, a bad answer, a missing check
+names = ["sai/images/a.png", "sai/images/b.png"]
+reply = "```json\n" + json.dumps({"checks": [
+    {"check": GEMMA_CHECKS[0], "answer": "yes", "frame": "sai/images/a.png", "note": "window left"},
+    {"check": GEMMA_CHECKS[1], "answer": "yes", "frame": "frame 7", "note": "invented frame"},
+    {"check": GEMMA_CHECKS[2], "answer": "probably", "frame": "sai/images/b.png"}],
+    "summary": "Bright room."}) + "\n```"
+g = parse_gemma(reply, names)
+assert [c["answer"] for c in g["checks"]] == ["yes"] + ["cannot tell"] * (len(GEMMA_CHECKS) - 1), g
+assert g["checks"][0]["frame"] == "sai/images/a.png" and g["checks"][1]["frame"] is None
+assert parse_gemma("not json", names)["checks"][0]["answer"] == "cannot tell"
+
 with tempfile.TemporaryDirectory() as d:
     scan = Path(d)
+    (scan / "gemma.json").write_text(json.dumps(g))
     (scan / "measurements.json").write_text(json.dumps(m))
     (scan / "picks.json").write_text(json.dumps([{"name": "bedroom door", "kind": "door", "width_m": 0.86}]))
     report(scan, occupants=2, rel_error=0.03)
     r = json.loads((scan / "report.json").read_text())
     assert [i["status"] for i in r["items"]] == ["pass", "pass", "pass", "pass"], r["items"]
-    assert "bedroom door" in (scan / "report.html").read_text(encoding="utf-8")
+    page = (scan / "report.html").read_text(encoding="utf-8")
+    assert "bedroom door" in page and "window left" in page and "not reviewed" in page
 print("ok")
