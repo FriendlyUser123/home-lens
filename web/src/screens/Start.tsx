@@ -1,7 +1,7 @@
 import type { HeadRef, Sample } from "../types.ts";
 
 export const SAMPLES: Sample[] = [
-  { id: "photo", label: "Photo on a desk", file: "/samples/letter-photo.png", moveOut: "2026-10-20", leaseEnd: "", tags: "/samples/room-tags.sample.json" },
+  { id: "photo", label: "Photo on a desk", file: "/samples/letter-photo.png", moveOut: "2026-10-20", leaseEnd: "", tags: "/samples/demo/room-tags.json" },
   { id: "letter", label: "Letter, on time", file: "/samples/letter.png", moveOut: "2026-10-17", leaseEnd: "2026-10-15" },
   { id: "statement", label: "Statement, late", file: "/samples/statement.png", moveOut: "2026-10-25", leaseEnd: "2026-10-25" },
 ];

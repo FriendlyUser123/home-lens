@@ -2,7 +2,7 @@ import type { Field } from "./lib/fields.ts";
 import type { OcrWord } from "./lib/locate.ts";
 import type { Quad } from "./lib/quad.ts";
 
-export type Step = "start" | "camera" | "reading" | "confirm" | "result" | "photos" | "letter" | "evidence";
+export type Step = "home" | "movein" | "report" | "start" | "camera" | "reading" | "confirm" | "result" | "photos" | "letter" | "evidence";
 export type HeadRef = React.RefObject<HTMLHeadingElement | null>;
 
 export interface Sample {

@@ -11,7 +11,12 @@ import {
   type Candidate, type Decisions, type RoomScan,
 } from "./lib/match.ts";
 import { computeClock, parseISO, todayLocal, type Charge } from "./lib/rules.ts";
+import { loadDemoScan, withAllConfirmed } from "./lib/demo.ts";
+import type { LoadedScan } from "./lib/scan3d.ts";
 import { Confirm } from "./screens/Confirm.tsx";
+import { Home, type Path } from "./screens/Home.tsx";
+import { MoveIn } from "./screens/MoveIn.tsx";
+import { Report } from "./screens/Report.tsx";
 import { Evidence } from "./screens/Evidence.tsx";
 import { LetterScreen } from "./screens/LetterScreen.tsx";
 import { Photos } from "./screens/Photos.tsx";
@@ -24,7 +29,7 @@ const TODAY_OVERRIDE = new URLSearchParams(window.location.search).get("today");
 const EMPTY_JOB: Job = { phase: "flatten", rawUrl: "", rawW: 1, rawH: 1, quad: null, pageUrl: "", pageW: 1, pageH: 1, fields: [], words: [], ocrOk: true };
 
 export function App() {
-  const [step, setStep] = useState<Step>("start");
+  const [step, setStep] = useState<Step>("home");
   const [moveOut, setMoveOut] = useState("");
   const [leaseEnd, setLeaseEnd] = useState("");
   const [reading, setReading] = useState<ReadingData | null>(null);
@@ -35,7 +40,11 @@ export function App() {
   const [charges, setCharges] = useState<Charge[]>([]);
   const [error, setError] = useState("");
   const [info, setInfo] = useState<Health | null>(null);
-  const [scan, setScan] = useState<RoomScan | null>(null);
+  const [loaded, setLoaded] = useState<LoadedScan | null>(null);
+  const scan: RoomScan | null = loaded?.scan ?? null;
+  const setScan = useCallback((s: RoomScan | null) => {
+    setLoaded((l) => (s === null ? (l?.cloud || l?.bundle ? { ...l, scan: null } : null) : l ? { ...l, scan: s } : { scan: s, cloud: null, bundle: null, up: "y", notes: [] }));
+  }, []);
   const [decisions, setDecisions] = useState<Decisions>({});
   const headRef = useRef<HTMLHeadingElement>(null);
 
@@ -113,19 +122,17 @@ export function App() {
     }
   }
 
-  async function loadSampleScan(url = "/samples/room-tags.sample.json") {
-    try {
-      setScan(parseRoomScan(await (await fetch(url)).json()));
-      setDecisions({});
-    } catch {
-      setScan(null);
-    }
-  }
-
   async function useSample(s: Sample) {
     setMoveOut(s.moveOut);
     setLeaseEnd(s.leaseEnd);
-    if (s.tags) await loadSampleScan(s.tags);
+    if (s.tags) {
+      try {
+        setLoaded(withAllConfirmed(await loadDemoScan()));
+        setDecisions({});
+      } catch {
+        setLoaded(null);
+      }
+    }
     await process(await loadImage(s.file), null, s.moveOut);
   }
 
@@ -139,7 +146,7 @@ export function App() {
   }
 
   function reset() {
-    setStep("start");
+    setStep("home");
     setMoveOut("");
     setLeaseEnd("");
     setLetterDate("");
@@ -148,7 +155,7 @@ export function App() {
     setReading(null);
     setJob(EMPTY_JOB);
     setCharges([]);
-    setScan(null);
+    setLoaded(null);
     setDecisions({});
     setError("");
   }
@@ -165,6 +172,13 @@ export function App() {
         </button>
       </header>
       <main id="main" className={`step-${step}`}>
+        {step === "home" && (
+          <Home headRef={headRef} privacy={privacy} onPick={(x: Path) => setStep(x === "moveout" ? "start" : x)} />
+        )}
+        {step === "movein" && (
+          <MoveIn headRef={headRef} loaded={loaded} setLoaded={(l) => { setLoaded(l); setDecisions({}); }} setScan={(x) => { setScan(x); setDecisions({}); }} onMoveOut={() => setStep("home")} />
+        )}
+        {step === "report" && <Report headRef={headRef} today={today} readBy={() => privacy} />}
         {step === "start" && (
           <Start headRef={headRef} error={error} privacy={privacy} onCamera={() => setStep("camera")} onFile={(f) => void onFile(f)} onSample={(s) => void useSample(s)} />
         )}
@@ -195,8 +209,8 @@ export function App() {
         )}
         {step === "photos" && (
           <Photos
-            headRef={headRef} scan={scan} setScan={(s) => { setScan(s); setDecisions({}); }} charges={charges}
-            candidates={candidates} decisions={decisions} decide={decide} onSampleScan={() => loadSampleScan()}
+            headRef={headRef} loaded={loaded} setLoaded={(l) => { setLoaded(l); setDecisions({}); }} charges={charges}
+            candidates={candidates} decisions={decisions} decide={decide} onMoveIn={() => setStep("movein")}
             onNext={() => setStep("letter")}
           />
         )}
