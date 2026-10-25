@@ -23,6 +23,10 @@ assert t[2]["box"] == [0.9, 0.9, 0.1, 0.1] or np.allclose(t[2]["box"], [0.9, 0.9
 assert t[3]["box"] is None and t[4]["room"] == "other"
 assert all(x["room"] in ROOMS and x["object"] in OBJECTS for x in t)
 assert [x["room"] for x in parse_tags(reply, room="living room")] == ["living room"] * 5  # forced room
+thinking = ('Format is {"tags": []} for none. Box {x, y} = top-left.\n```json\n'
+            '{"tags": [{"room": "living room", "object": "other", "note": "scuffs on the sofa", "box": [0.4, 0.4, 0.1, 0.1]}]}\n```')
+assert [x["note"] for x in parse_tags(thinking)] == ["scuffs on the sofa"]  # reasoning with braces before the answer
+assert parse_tags('x {"tags": []} y\n```json\n{"tags": []}\n```') == []
 assert parse_tags("no json here") == [] and parse_tags('{"tags": "x"}') == [] and parse_tags('{"tags": []}') == []
 
 # quaternion: rebuild the rotation from it, including 180-degree turns that take the non-trace branch

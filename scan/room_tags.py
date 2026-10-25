@@ -18,6 +18,7 @@ Usage: python scan/room_tags.py tag data/<scan> [--room "living room"] [--captur
 import argparse
 import base64
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -47,9 +48,11 @@ def tag_prompt(room):
 
 def parse_tags(text, room=None):
     """Gemma's reply -> tag dicts. Anything unusable is dropped or downgraded, never trusted."""
+    # Gemma 4 writes its reasoning first (it can contain braces), so decode from the LAST {"tags" onward
+    starts = [m.start() for m in re.finditer(r'\{\s*"tags"', text)]
     try:
-        r = json.loads(text[text.index("{"):text.rindex("}") + 1])
-    except ValueError:
+        r, _ = json.JSONDecoder().raw_decode(text[starts[-1]:])
+    except (IndexError, ValueError):
         return []
     tags = r.get("tags") if isinstance(r, dict) else None
     out = []
