@@ -72,7 +72,7 @@ Teammates own the flows above. Ownership of the VSLAM extension is below. **Do n
 2. **Licences: audited 2026-10-24 evening, results below.** List every non-commercial dependency in the README or drop the extension.
 3. Agree the asset format with the app teammate and record it here.
 
-**Code built so far:** `scan/` holds a fresh pipeline written this weekend: `pipeline.py` with stages poses → depth → TSDF → planes → rules → report, plus `test_measure.py` (synthetic room, passes). It uses a Python 3.12 venv at `.venv/` (spectacularAI has no 3.14 wheels). A separate `src/` pipeline from another writer overlaps it on measurements, rules and the report. Pick one.
+**Code built so far:** `scan/` holds a fresh pipeline written this weekend: `pipeline.py` with stages poses → depth → TSDF → planes → rules → report, plus `test_measure.py` (synthetic room, passes). It uses a Python 3.12 venv at `.venv/` (spectacularAI has no 3.14 wheels). `scan/compare.py` is the damage compare: `place` turns move-in tag boxes (`tags.json`, pixels on a keyframe) into 3D spots; `compare` places a move-out photo in the map (SIFT + PnP against keyframe depth), casts a ray through each box, lists move-in tags within 0.5 m and saves move-in/move-out crops side by side. Output is only "possible match, confirm". `scan/test_compare.py` passes on a synthetic wall; untested on a real scan. Open: the tag file format with the Gemma-tagging teammate, and the 0.5 m radius. A separate `src/` pipeline from another writer overlaps it on measurements, rules and the report. Pick one.
 
 **Licence audit (2026-10-24):**
 | Dependency | Licence | Effect on the public MIT repo |
