@@ -2,10 +2,12 @@ node_modules/
 dist/
 .env
 .env.*
+!.env.example
 *.log
 .DS_Store
 shots/
 .cache/
+web/public/vendor/
 
 # scan pipeline: recordings, scans and footage never go in the public repo
 data/
