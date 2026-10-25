@@ -45,23 +45,28 @@ def match(des_a, des_b):
     return np.array([(m.queryIdx, m.trainIdx) for m in good], int).reshape(-1, 2)
 
 
-def localize(photo, scan, frames, top=3):
+def localize(photo, scan, frames, top=3, photo_sides=(1280, 640)):
     """Pose of a still photo in the scan's world: SIFT-match it to the keyframes, lift the matched keyframe
-    pixels to 3D with that keyframe's depth, solve PnP. None when no keyframe gives MIN_INLIERS."""
-    pts, des = features(photo)
-    if des is None:
-        return None
+    pixels to 3D with that keyframe's depth, solve PnP. None when no keyframe gives MIN_INLIERS.
+    Keyframes are ranked by homography inliers (raw matches are mostly outliers on plain walls), and the photo is
+    matched at two sizes so a close-up can still meet a wider keyframe."""
     ph, pw = photo.shape[:2]
+    feats = [features(photo, s) for s in photo_sides]
     scales = json.loads((scan / "depth" / "scale.json").read_text())
     cands = []
     for f in frames:  # ponytail: matches every keyframe, fine for a room (~100s); pre-compute features if it gets slow
-        kpts, kdes = features(cv2.imread(str(f["image"])))
-        if kdes is not None:
-            cands.append((match(des, kdes), f, kpts))
+        kpts, kdes = features(cv2.imread(str(f["image"])), 1920)
+        for pts, des in feats:
+            if des is None or kdes is None:
+                continue
+            m = match(des, kdes)
+            if len(m) < 8:
+                continue
+            H, mask = cv2.findHomography(kpts[m[:, 1]], pts[m[:, 0]], cv2.RANSAC, 6.0)
+            if H is not None:
+                cands.append((int(mask.sum()), m, f, kpts, pts))
     best = None
-    for m, f, kpts in sorted(cands, key=lambda c: len(c[0]), reverse=True)[:top]:
-        if len(m) < MIN_INLIERS:
-            continue
+    for _, m, f, kpts, pts in sorted(cands, key=lambda c: c[0], reverse=True)[:top]:
         stem = f["image"].stem
         depth = np.load(scan / "depth" / f"{stem}.npy") * (scales[stem] or 1.0)  # same rule as fuse
         uv, img_pts = kpts[m[:, 1]], pts[m[:, 0]]
@@ -70,12 +75,13 @@ def localize(photo, scan, frames, top=3):
         K = f["K"]
         cam = np.c_[(uv - K[:2, 2]) / np.diag(K)[:2] * z[:, None], z]
         obj = cam @ f["c2w"][:3, :3].T + f["c2w"][:3, 3]
-        # ponytail: assumes the photo has the keyframes' field of view (same phone, same orientation, only resized).
-        # A photo-mode crop or a different lens breaks it; then pass the real intrinsics.
-        Kp = K.copy()
-        Kp[:2] *= pw / depth.shape[1]
+        # ponytail: assumes the photo has the keyframes' field of view (same phone, 4:3 sensor, portrait or landscape,
+        # only resized): focal scales with the long side, principal point is the centre. A crop (zoom, 16:9 video
+        # mode) or a different lens breaks it; then pass the real intrinsics.
+        s = max(ph, pw) / max(depth.shape)
+        Kp = np.array([[K[0, 0] * s, 0, pw / 2], [0, K[1, 1] * s, ph / 2], [0, 0, 1]])
         keep = z > 0.1
-        ok, rvec, tvec, inl = cv2.solvePnPRansac(obj[keep], img_pts[keep], Kp, None, reprojectionError=4.0,
+        ok, rvec, tvec, inl = cv2.solvePnPRansac(obj[keep], img_pts[keep], Kp, None, reprojectionError=4.0 * max(s, 1.0),
                                                  iterationsCount=500, flags=cv2.SOLVEPNP_SQPNP)
         n = len(inl) if ok and inl is not None else 0
         if n >= MIN_INLIERS and (best is None or n > best["inliers"]):
