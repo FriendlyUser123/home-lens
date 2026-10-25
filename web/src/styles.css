@@ -1,9 +1,10 @@
 :root{
-  --desk:#D6D3CC; --desk-d:#C4C0B7; --paper:#FBFAF6; --ink:#17202B; --ink-2:#444C58; --rule:#B3AEA2;
+  --desk:#E9EFF5; --desk-d:#D3DEE9; --paper:#FFFFFF; --ink:#0B2E57; --ink-2:#3A5677; --rule:#A9BDD3;
+  --cyan:#0F3B6E; --cyan-d:#0A2C54; --line:#F4F8FC; --survey:#C2410C;
   --marker:#FFE45C; --lens:#FFD21F; --night:#0E1318; --amber:#8F4308; --amber-bg:#FBE7C6;
-  --red:#9E2A1B; --red-bg:#F6D9D3; --blue:#23406B; --blue-bg:#DCE5F2; --green:#1F5B2E; --green-bg:#D8EBDB;
+  --red:#9E2A1B; --red-bg:#F6D9D3; --blue:#1D4E89; --blue-bg:#DCE5F2; --green:#1F5B2E; --green-bg:#D8EBDB;
   --focus:#0B57D0;
-  --f-body:"Public Sans",system-ui,sans-serif; --f-num:"Barlow Condensed","Arial Narrow",sans-serif;
+  --f-body:"Public Sans",system-ui,sans-serif; --f-tech:ui-monospace,"SFMono-Regular","Cascadia Mono","DejaVu Sans Mono",monospace; --f-num:"Barlow Condensed","Arial Narrow",sans-serif;
   --ease:cubic-bezier(.16,1,.3,1);
 }
 *{box-sizing:border-box}
@@ -313,3 +314,65 @@ textarea{resize:vertical;min-height:56px}
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
   .sweep{display:none}
 }
+
+/* ===== Blueprint / surveyor direction ===== */
+body{background-color:var(--desk);background-image:linear-gradient(rgba(29,78,137,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(29,78,137,.07) 1px,transparent 1px);background-size:24px 24px}
+.paper{border:1px solid var(--ink);box-shadow:none;position:relative}
+.paper::before,.paper::after{content:"";position:absolute;width:14px;height:14px;border:0 solid var(--ink);pointer-events:none}
+.paper::before{left:-1px;top:-1px;border-width:3px 0 0 3px}
+.paper::after{right:-1px;bottom:-1px;border-width:0 3px 3px 0}
+.btn{background:var(--ink);border-color:var(--ink)}
+.btn:hover:not(:disabled){background:var(--cyan-d)}
+h1,h2{letter-spacing:.005em}
+
+.bp{gap:24px}
+@media (min-width:960px){.bp{grid-template-columns:minmax(0,1.6fr) minmax(300px,1fr);align-items:start}}
+.bp-sheet{position:relative;background:var(--cyan);color:var(--line);border:2px solid var(--cyan-d);padding:18px 18px 0;
+  background-image:linear-gradient(rgba(255,255,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.07) 1px,transparent 1px);background-size:32px 32px}
+.bp-sheet::before{content:"";position:absolute;inset:8px;border:1px solid rgba(244,248,252,.55);pointer-events:none}
+.bp-head{position:relative;display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 20px}
+.bp-head h1{color:#fff;margin:0}
+.bp-head .sub{color:#DCE8F5;font-family:var(--f-tech);font-size:.9375rem}
+.bp-room{margin:10px 0 0;display:grid;gap:12px;min-width:0}
+.bp-room>*,.bp>*{min-width:0}
+.bp-canvas .room3d canvas{max-width:100%}
+@media (min-width:700px){.bp-room{grid-template-columns:minmax(0,1fr) 190px;align-items:center}}
+.bp-canvas{position:relative;height:clamp(280px,46vw,460px);padding:0 0 22px 22px}
+.bp-canvas .room3d-wrap,.bp-canvas .room3d{height:100%;background:transparent;border:0}
+.bp-canvas .room3d:focus-visible{outline:3px solid #FFD21F;outline-offset:-3px}
+.dim{position:absolute;font:600 .8125rem var(--f-tech);color:#fff;pointer-events:none}
+.dim::before,.dim::after{content:"";position:absolute;background:rgba(244,248,252,.8)}
+.dim-x{left:22px;right:0;bottom:2px;height:18px;border-left:1px solid rgba(244,248,252,.8);border-right:1px solid rgba(244,248,252,.8)}
+.dim-x::before{left:0;right:0;top:50%;height:1px}
+.dim-x b{position:relative;z-index:1;display:block;width:max-content;margin:0 auto;padding:0 8px;background:var(--cyan);line-height:18px;font-weight:600}
+.dim-y{left:0;top:0;bottom:22px;width:18px;border-top:1px solid rgba(244,248,252,.8);border-bottom:1px solid rgba(244,248,252,.8)}
+.dim-y::before{top:0;bottom:0;left:50%;width:1px}
+.dim-y b{position:absolute;z-index:1;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg);padding:0 8px;background:var(--cyan);white-space:nowrap;font-weight:600}
+.callouts{list-style:none;margin:0;padding:0;display:grid;gap:10px;font:500 .9375rem/1.3 var(--f-tech);color:#fff}
+.callouts li{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;position:relative;padding-left:26px;animation:co-in .5s var(--ease) both;animation-delay:calc(1.1s + var(--i)*.45s)}
+.callouts li::before{content:"";position:absolute;left:0;top:50%;width:22px;border-top:1px dashed rgba(244,248,252,.8)}
+.pin-n{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#fff;color:var(--ink);font:700 1.0625rem var(--f-num);border:2px solid var(--survey);box-shadow:0 0 0 2px #fff}
+@keyframes co-in{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
+.titleblock{position:relative;display:grid;grid-template-columns:repeat(3,1fr);margin:14px -18px 0;border-top:1px solid rgba(244,248,252,.55);font-family:var(--f-tech)}
+.titleblock div{padding:8px 14px;border-left:1px solid rgba(244,248,252,.55)}
+.titleblock div:first-child{border-left:0}
+.titleblock dt{font-size:.75rem;color:#C9DAEC}
+.titleblock dd{margin:0;font-size:.9375rem;color:#fff}
+
+.paths{border-bottom:2px solid var(--ink);margin-top:0}
+.paths li{border-top:2px solid var(--ink)}
+.paths li+li{border-top-width:1px}
+.paths button:hover{background:var(--blue-bg)}
+.paths .n{font:600 1rem/1.4 var(--f-tech);color:var(--survey);align-self:start;padding-top:8px}
+.paths .t{color:var(--ink)}
+.home .priv{margin-top:12px;font-family:var(--f-tech);font-size:.8125rem}
+
+/* move-out: charges as callouts keyed like survey pins */
+.charges ul{counter-reset:pin}
+.charges li{counter-increment:pin;position:relative;padding-left:52px}
+.charges li::before{content:counter(pin);position:absolute;left:0;top:12px;width:30px;height:30px;display:grid;place-items:center;border-radius:50%;
+  background:#fff;color:var(--ink);font:700 1.0625rem var(--f-num);border:2px solid var(--survey)}
+.charges li::after{content:"";position:absolute;left:32px;top:27px;width:12px;border-top:1px dashed var(--ink-2)}
+.charges .a{font-family:var(--f-tech)}
+
+@media (prefers-reduced-motion:reduce){.callouts li{animation:none}}

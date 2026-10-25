@@ -9,7 +9,9 @@ import {
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { robustBounds, type Cloud, type Pin, type ScanBundle, type Up, type Vec3 } from "./scan3d.ts";
 
-const EDGE = 0x8a8f98, OBJ = 0xb4a58a, PATH = 0x378add, DOT = 0x23406b, DOT_SEL = 0xffd21f;
+// blueprint palette: white linework on cyanotype blue, surveyor-orange markers
+const EDGE = 0xf4f8fc, OBJ = 0xbcd3ea, PATH = 0xffffff, DOT = 0xff6a3d, DOT_SEL = 0xffd21f;
+const BADGE_FILL = "#FFFFFF", BADGE_SEL = "#FFD21F", BADGE_INK = "#0B2E57";
 
 export interface ViewerContent {
   cloud: Cloud | null;
@@ -31,6 +33,10 @@ export interface Viewer {
 export interface ViewerOptions {
   onSelect?: (id: string) => void;
   reducedMotion?: boolean;
+  /** slow turntable until the user touches the view (ignored with reduced motion) */
+  autoRotate?: boolean;
+  /** pins drop in one by one after content loads (ignored with reduced motion) */
+  dropPins?: boolean;
 }
 
 function badge(text: string, selected: boolean): CanvasTexture {
@@ -38,10 +44,10 @@ function badge(text: string, selected: boolean): CanvasTexture {
   c.width = c.height = 96;
   const g = c.getContext("2d");
   if (g) {
-    g.fillStyle = selected ? "#FFD21F" : "#fff";
+    g.fillStyle = selected ? BADGE_SEL : BADGE_FILL;
     g.beginPath(); g.arc(48, 48, 42, 0, 7); g.fill();
-    g.lineWidth = 7; g.strokeStyle = "#17202B"; g.stroke();
-    g.fillStyle = "#17202B"; g.font = "700 46px 'Barlow Condensed', sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+    g.lineWidth = 7; g.strokeStyle = BADGE_INK; g.stroke();
+    g.fillStyle = BADGE_INK; g.font = "700 46px 'Barlow Condensed', sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
     g.fillText(text, 48, 51);
   }
   return new CanvasTexture(c);
@@ -183,6 +189,34 @@ export function createViewer(el: HTMLElement, opts: ViewerOptions = {}): Viewer 
   const ro = new ResizeObserver(resize);
   ro.observe(el);
 
+  // turntable + pin drop (presentation only)
+  let spin = 0, spinning = !!opts.autoRotate && !opts.reducedMotion, built = performance.now();
+  const motion = !opts.reducedMotion;
+  const tick = (now: number): void => {
+    let busy = false;
+    if (motion && opts.dropPins) {
+      pinObjs.forEach((p, i) => {
+        const t = Math.min(1, Math.max(0, (now - built - 600 - i * 450) / 520));
+        const e = 1 - (1 - t) ** 3;
+        p.sprite.visible = p.dot.visible = t > 0;
+        p.sprite.material.opacity = e;
+        p.sprite.material.transparent = true;
+        if (t < 1) busy = true;
+      });
+    }
+    if (spinning) {
+      const up = upVec().transformDirection(world.matrixWorld);
+      camera.position.sub(controls.target).applyAxisAngle(up, 0.0016).add(controls.target);
+      controls.update();
+      busy = true;
+    }
+    draw();
+    if (busy) spin = requestAnimationFrame(tick);
+  };
+  const startTick = (): void => { cancelAnimationFrame(spin); built = performance.now(); spin = requestAnimationFrame(tick); };
+  renderer.domElement.addEventListener("pointerdown", () => { spinning = false; });
+  el.addEventListener("keydown", () => { spinning = false; });
+
   const ray = new Raycaster(), mouse = new Vector2();
   let down: [number, number] | null = null;
   const dom = renderer.domElement;
@@ -205,6 +239,7 @@ export function createViewer(el: HTMLElement, opts: ViewerOptions = {}): Viewer 
     resize();
     const h = home();
     jump(h.pos, h.target);
+    if (motion && (opts.dropPins || spinning)) startTick();
   }
 
   function select(id: string | null): void {
@@ -215,6 +250,7 @@ export function createViewer(el: HTMLElement, opts: ViewerOptions = {}): Viewer 
   function flyTo(id: string): Promise<void> {
     const p = pinObjs.find((x) => x.pin.id === id);
     if (!p) return Promise.resolve();
+    spinning = false;
     select(id);
     const target = toWorld(p.pin.position);
     // stand off from the pin on the side the room's middle is, a bit above it
@@ -255,6 +291,7 @@ export function createViewer(el: HTMLElement, opts: ViewerOptions = {}): Viewer 
     setUp(up) { setContent({ ...content, up }); },
     dispose() {
       cancelAnimationFrame(anim);
+      cancelAnimationFrame(spin);
       ro.disconnect();
       controls.dispose();
       clear();

@@ -7,6 +7,7 @@ import { createViewer, type Viewer } from "../lib/viewer3d.ts";
 export function RoomViewer(p: {
   cloud: Cloud | null; bundle: ScanBundle | null; pins: Pin[]; up: Up;
   selected: string | null; fly: { id: string; n: number } | null; onSelect: (id: string) => void; label: string;
+  autoRotate?: boolean; dropPins?: boolean; bare?: boolean;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const viewer = useRef<Viewer | null>(null);
@@ -19,7 +20,7 @@ export function RoomViewer(p: {
     const el = box.current;
     if (!el) return;
     try {
-      viewer.current = createViewer(el, { onSelect: (id) => onSelect.current(id), reducedMotion: reduced });
+      viewer.current = createViewer(el, { onSelect: (id) => onSelect.current(id), reducedMotion: reduced, autoRotate: p.autoRotate, dropPins: p.dropPins });
     } catch {
       setFailed(true);
       return;
@@ -46,9 +47,9 @@ export function RoomViewer(p: {
   return (
     <div className="room3d-wrap">
       <div ref={box} className="room3d" role="img" aria-label={p.label} tabIndex={0} />
-      <div className="room3d-bar noprint">
+      {!p.bare && <div className="room3d-bar noprint">
         <button type="button" className="link" onClick={() => viewer.current?.reset()}>Reset view</button>
-      </div>
+      </div>}
     </div>
   );
 }
