@@ -22,6 +22,8 @@
           "box": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4, "description": "Optional [x, y, w, h] in 0-1 photo coordinates" },
           "takenAt": { "type": "string", "format": "date-time" },
           "pose": { "type": "array", "items": { "type": "number" }, "description": "Optional VSLAM camera position/orientation for 3D placement" },
+          "frame": { "type": "string", "description": "Optional keyframe name the photo came from" },
+          "position": { "type": ["array", "null"], "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "Optional [x, y, z] in metres: the tag's 3D spot in the scan's own world (same frame as cloud.ply). null when the box did not hit the map" },
           "confirmed": { "type": "boolean", "description": "true once the renter has confirmed the tag" }
         }
       }

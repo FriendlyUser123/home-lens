@@ -11,6 +11,12 @@ export interface RoomTag {
   box?: number[];
   takenAt: string;
   pose?: number[];
+  /** 3D spot of the tag in the scan's own world, metres (optional; from the room scan) */
+  position?: [number, number, number];
+  /** keyframe the photo came from (optional) */
+  frame?: string;
+  /** the `photo` value as written in the file, kept so an export stays portable */
+  photoName?: string;
   confirmed: boolean;
 }
 
@@ -173,6 +179,12 @@ export function matchCharges(charges: ChargeText[], tags: RoomTag[], opts: Match
 
 // ---- loading the hand-off file ----
 
+export function parsePosition(v: unknown): [number, number, number] | undefined {
+  if (!Array.isArray(v) || v.length !== 3) return undefined;
+  const [x, y, z] = v as unknown[];
+  return [x, y, z].every((n) => typeof n === "number" && Number.isFinite(n)) ? [x as number, y as number, z as number] : undefined;
+}
+
 const ROOMS = ["bedroom", "bathroom", "kitchen", "living room", "hallway", "closet", "other"];
 
 /** Checks the JSON against shared/room-tags.schema.json. Throws an Error with a plain message. */
@@ -195,6 +207,8 @@ export function parseRoomScan(input: unknown): RoomScan {
       box: Array.isArray(t.box) && t.box.length === 4 ? (t.box as number[]) : undefined,
       takenAt: t.takenAt,
       pose: Array.isArray(t.pose) ? (t.pose as number[]) : undefined,
+      position: parsePosition(t.position),
+      frame: typeof t.frame === "string" ? t.frame : undefined,
       confirmed: t.confirmed === true,
     };
   });
