@@ -116,7 +116,7 @@ async function viaOllama(imageB64: string): Promise<ReadResult> {
   return { ...parseJSON(data.message?.content ?? ""), provider: "ollama", model: OLLAMA_MODEL, mocked: false };
 }
 
-async function viaGemini(imageB64: string, mime: string): Promise<ReadResult> {
+async function geminiText(prompt: string, imageB64: string, mime: string): Promise<string> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY is not set");
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
@@ -125,17 +125,24 @@ async function viaGemini(imageB64: string, mime: string): Promise<ReadResult> {
       method: "POST",
       headers: { "content-type": "application/json", "x-goog-api-key": key },
       body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: PROMPT }, { inline_data: { mime_type: mime, data: imageB64 } }] }],
+        contents: [{ role: "user", parts: [{ text: prompt }, { inline_data: { mime_type: mime, data: imageB64 } }] }],
         // Reading printed text needs no long reasoning: "minimal" cuts about 8 s to about 1.5 s per page.
         generationConfig: { temperature: 0, responseMimeType: "application/json", ...(thinking ? {} : { thinkingConfig: { thinkingLevel: "minimal" } }) },
       }),
     });
   let res = await call(false);
   if (res.status === 400) res = await call(true); // a model that rejects thinkingConfig still works without it
+  for (let n = 0; n < 2 && (res.status === 429 || res.status >= 500); n++) {
+    await new Promise((r) => setTimeout(r, 1500 * (n + 1)));
+    res = await call(false);
+  }
   if (!res.ok) throw new Error(`gemini ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
-  const text = (data.candidates?.[0]?.content?.parts ?? []).filter((p) => !p.thought).map((p) => p.text ?? "").join("");
-  return { ...parseJSON(text), provider: "gemini", model: GEMINI_MODEL, mocked: false };
+  return (data.candidates?.[0]?.content?.parts ?? []).filter((p) => !p.thought).map((p) => p.text ?? "").join("");
+}
+
+async function viaGemini(imageB64: string, mime: string): Promise<ReadResult> {
+  return { ...parseJSON(await geminiText(PROMPT, imageB64, mime)), provider: "gemini", model: GEMINI_MODEL, mocked: false };
 }
 
 /** Canned output so the UI can be developed without a GPU. Only used when MODEL_PROVIDER=mock. */
@@ -169,5 +176,66 @@ export async function readDocument(imageB64: string, mime: string): Promise<Read
       return viaMock();
     default:
       return viaOllama(imageB64);
+  }
+}
+
+// ---- Report a problem: Gemma names what is wrong in a photo. Perception only; the renter edits it and code writes the notice. ----
+
+export interface IssueResult {
+  issue: string;
+  room: string;
+  description: string;
+  provider: Provider;
+  model: string;
+  mocked: boolean;
+}
+
+const ISSUE_PROMPT = `You look at a photo a renter took of a problem in their home (a leak, mold, a broken lock, a pest, damaged flooring, no heat, and so on).
+Describe only what is visible. Do not guess causes or blame anyone.
+Return JSON with:
+- issue: a short name of the problem, 8 words or fewer, e.g. "Water stain and drip under kitchen sink".
+- room: one of bedroom, bathroom, kitchen, living room, hallway, closet, other, or "" if you cannot tell.
+- description: one or two plain sentences of what is visible.
+Always name the most likely visible problem, even if the photo is small or an illustration. Use "" only when nothing at all looks wrong.`;
+
+const ROOMS = ["bedroom", "bathroom", "kitchen", "living room", "hallway", "closet", "other"];
+
+function parseIssue(text: string): Pick<IssueResult, "issue" | "room" | "description"> {
+  const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start < 0 || end < start) throw new Error("model returned no JSON");
+  const o = JSON.parse(cleaned.slice(start, end + 1)) as Record<string, unknown>;
+  const room = typeof o.room === "string" && ROOMS.includes(o.room) ? o.room : "";
+  return { issue: typeof o.issue === "string" ? o.issue.trim() : "", room, description: typeof o.description === "string" ? o.description.trim() : "" };
+}
+
+const ISSUE_SCHEMA = {
+  type: "object",
+  properties: { issue: { type: "string" }, room: { type: "string" }, description: { type: "string" } },
+  required: ["issue", "room", "description"],
+};
+
+export async function nameIssue(imageB64: string, mime: string): Promise<IssueResult> {
+  switch (provider()) {
+    case "gemini":
+    {
+      // the model sometimes answers with an empty issue on the first try; one retry is cheap
+      let r = parseIssue(await geminiText(ISSUE_PROMPT, imageB64, mime));
+      if (!r.issue) r = parseIssue(await geminiText(ISSUE_PROMPT, imageB64, mime));
+      return { ...r, provider: "gemini", model: GEMINI_MODEL, mocked: false };
+    }
+    case "mock":
+      return { issue: "Bent window blind slats", room: "bedroom", description: "Two slats of the blind are bent and no longer lie flat.", provider: "mock", model: "canned", mocked: true };
+    default: {
+      const res = await fetch(`${OLLAMA_URL}/api/chat`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ model: OLLAMA_MODEL, stream: false, think: false, format: ISSUE_SCHEMA, options: { temperature: 0, num_ctx: 8192 }, messages: [{ role: "user", content: ISSUE_PROMPT, images: [imageB64] }] }),
+      });
+      if (!res.ok) throw new Error(`ollama ${res.status}: ${(await res.text()).slice(0, 200)}`);
+      const data = (await res.json()) as { message?: { content?: string } };
+      return { ...parseIssue(data.message?.content ?? ""), provider: "ollama", model: OLLAMA_MODEL, mocked: false };
+    }
   }
 }
