@@ -8,7 +8,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const tmp = process.env.TMPDIR ?? "/home/john/.cache/tmp";
+const tmp = process.env.TMPDIR ?? (await import("node:os")).tmpdir();
 mkdirSync(tmp, { recursive: true });
 const cam = resolve(tmp, "home-lens-fake-cam.y4m");
 if (!existsSync(cam)) {

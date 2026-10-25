@@ -12,6 +12,8 @@ Three moments in a renter's year, one app:
 
 **Information, not legal advice.**
 
+**Demo video (2 min):** VIDEO_LINK
+
 ## Model
 
 **Gemma 4, `gemma-4-26b-a4b-it`**, through the Gemini API (Gemma 4 track). Open-weight local mode: `gemma4:e4b` via Ollama (`MODEL_PROVIDER=ollama`).
@@ -98,11 +100,11 @@ Gemma may miss damage or misname a problem (in our test run it called a bent bli
 
 - The photo goes to the Gemini API to be read. **The Gemini API free tier may use submitted data to improve Google products, so demo with the sample documents only.** For real papers, run locally with `MODEL_PROVIDER=ollama` (`gemma4:e4b`).
 - Scan files, 3D clouds, OCR, page detection and matching stay in the browser. No accounts, nothing stored by this app, the API keeps no request bodies.
-- A home scan is more identifying than a photo. `data/` is gitignored; no real scan is in this repo. The demo room is generated.
+- A home scan is more identifying than a photo. `data/` (raw recordings) is gitignored. The one real scan in this repo, `web/public/samples/house/` (a point cloud and one tagged photo of a team member's living room), is published with that team member's permission. The move-out demo room is generated.
 
 ## Status and limits
 
-Works end to end: demo scan, 3D view, confirm/remove tags, fly-to-pin from a matched charge, letter reading with the real model, deadline, letter, evidence sheet, repair notice. Placeholder: the demo room and its photos are synthetic; Dhruv's real `cloud.ply` and `room-tags.json` have not been loaded in the app yet. The scan side was tested on one room and its scale was never checked against a tape measure; see `scan/README.md`. The statute cites are from the team brief and `CLAUDE.md`; the repair statute does not name leaks or mold, so the notice says "may fall under". The 5-day move-in objection (§ 55.1-1214) from `web-static/rules.js` is not ported.
+Works end to end: demo scan, 3D view, confirm/remove tags, fly-to-pin from a matched charge, letter reading with the real model, deadline, letter, evidence sheet, repair notice. Move in loads a real scan: Dhruv's living room (236,597 points), processed with `scan/pipeline.py` and tagged by Gemma (`scan/room_tags.py`): one tag, a hole in the sofa seat. The move-out samples use a synthetic demo room, because the sample letter's charges (carpet, wall, counter) are matched against its tags. The scan side was tested on one room and its scale was never checked against a tape measure; see `scan/README.md`. The statute cites are from the team brief and `CLAUDE.md`; the repair statute does not name leaks or mold, so the notice says "may fall under". The 5-day move-in objection (§ 55.1-1214) from `web-static/rules.js` is not ported.
 
 ## Repository
 
