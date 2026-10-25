@@ -34,7 +34,7 @@ export function MoveIn(p: {
           <h1 ref={p.headRef} tabIndex={-1}>Add your room scan</h1>
           <p className="sub">See your room in 3D. Confirm what was already damaged.</p>
         </div>
-        <ScanPicker onLoaded={p.setLoaded} />
+        <ScanPicker onLoaded={p.setLoaded} house />
       </section>
     );
   }
