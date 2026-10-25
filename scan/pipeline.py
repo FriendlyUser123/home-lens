@@ -236,6 +236,8 @@ def parse_gemma(text, names):
 
 def gemma_call(parts):
     """One Gemma 4 request (text and inline images in `parts`) -> the reply text."""
+    import time
+    import urllib.error
     import urllib.request
 
     req = urllib.request.Request(
@@ -243,8 +245,18 @@ def gemma_call(parts):
         data=json.dumps({"contents": [{"role": "user", "parts": parts}],
                          "generationConfig": {"temperature": 0}}).encode(),
         headers={"Content-Type": "application/json", "x-goog-api-key": api_key()})
-    with urllib.request.urlopen(req, timeout=180) as resp:
-        body = json.load(resp)
+    for attempt in range(4):  # the free tier throws the odd 500/503/429; back off 5, 10, 20 s then give up
+        try:
+            with urllib.request.urlopen(req, timeout=180) as resp:
+                body = json.load(resp)
+            break
+        except urllib.error.HTTPError as e:
+            if e.code not in (429, 500, 502, 503, 504) or attempt == 3:
+                raise
+        except (urllib.error.URLError, TimeoutError):
+            if attempt == 3:
+                raise
+        time.sleep(5 * 2 ** attempt)
     return "".join(p.get("text", "") for p in body["candidates"][0]["content"]["parts"])
 
 

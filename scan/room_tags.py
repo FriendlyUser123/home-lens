@@ -14,6 +14,7 @@ never call the list complete.
 Usage: python scan/room_tags.py tag data/<scan> [--room "living room"] [--captured-at ISO8601] [--frames 12]
                                     [--address "..."] [--avoid frame_00043 ...]
        python scan/room_tags.py review data/<scan>
+       python scan/room_tags.py inline data/<scan>     (confirmed tags only, photos as data URLs, for the web app)
 """
 import argparse
 import base64
@@ -142,9 +143,18 @@ def review(scan):
     path.write_text(json.dumps(d, indent=1))
 
 
+def inline(scan):
+    """room-tags.inline.json: the same tags with each photo as a data URL, so the web app can load it from anywhere.
+    Only confirmed tags go in; this is the file to hand to the document side (it contains the photos, so mind who gets it)."""
+    d = json.loads((scan / "room-tags.json").read_text())
+    d["tags"] = [dict(t, photo="data:image/jpeg;base64," + base64.b64encode((scan / t["photo"]).read_bytes()).decode())
+                 for t in d["tags"] if t["confirmed"]]
+    (scan / "room-tags.inline.json").write_text(json.dumps(d))
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("stage", choices=["tag", "review"])
+    ap.add_argument("stage", choices=["tag", "review", "inline"])
     ap.add_argument("scan", type=Path)
     ap.add_argument("--room", choices=ROOMS, help="force this room on every tag (you know it; Gemma would guess)")
     ap.add_argument("--captured-at", help="ISO 8601 time of the move-in recording, e.g. 2026-10-24T21:34:47-04:00")
@@ -154,5 +164,7 @@ if __name__ == "__main__":
     a = ap.parse_args()
     if a.stage == "review":
         review(a.scan)
+    elif a.stage == "inline":
+        inline(a.scan)
     else:
         tag(a.scan, a.room, a.captured_at, a.address, a.frames, a.avoid)
