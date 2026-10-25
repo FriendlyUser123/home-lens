@@ -92,11 +92,17 @@ def depth(scan):
     (out / "scale.json").write_text(json.dumps(scales, indent=1))
 
 
-def fuse(scan, voxel=0.02):
+def fuse(scan, voxel=0.03, margin=3.5):
     frames, _ = load_frames(scan)
     scales = json.loads((scan / "depth" / "scale.json").read_text())
-    vol = o3d.pipelines.integration.ScalableTSDFVolume(
-        voxel_length=voxel, sdf_trunc=4 * voxel, color_type=o3d.pipelines.integration.TSDFVolumeColorType.RGB8)
+    # ponytail: Open3D 0.20 on Windows returns an empty ScalableTSDFVolume (even for a flat synthetic wall), so use
+    # the uniform volume: a cube around the camera path + margin (walls are within depth range of the path).
+    # Memory grows with the cube of size/voxel; raise voxel for a big space.
+    cams = np.array([f["c2w"][:3, 3] for f in frames])
+    lo, hi = cams.min(0) - margin, cams.max(0) + margin
+    vol = o3d.pipelines.integration.UniformTSDFVolume(
+        length=float((hi - lo).max()), resolution=int(np.ceil((hi - lo).max() / voxel)), sdf_trunc=4 * voxel,
+        color_type=o3d.pipelines.integration.TSDFVolumeColorType.RGB8, origin=lo)
     for f in frames:
         stem = f["image"].stem
         d = np.load(scan / "depth" / f"{stem}.npy") * (scales[stem] or 1.0)  # None = keep the model's own metric scale
